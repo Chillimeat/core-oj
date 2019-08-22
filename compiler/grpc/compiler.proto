@@ -1,0 +1,47 @@
+
+syntax = "proto3";
+
+package compilerrpc;
+
+option go_package = "github.com/Myriad-Dreamin/core-oj/compiler/grpc";
+
+enum CompileResponseCode {
+    Ok = 0;
+    FileNotFound = 1;
+    CompileTimeLimitExceed = 2;
+}
+
+
+service Compiler {
+    rpc Compile(CompileRequest) returns (CompileReply);
+    rpc Info(InfoRequest) returns (InfoReply);
+}
+
+message CompileRequest {
+    string compiler_type = 1;
+    bytes code_path = 2;
+}
+
+message CompileReply {
+    CompileResponseCode response_code =1;
+}
+
+message InfoRequest {
+}
+
+message CompilerToolInfo {
+    string name = 1;
+    string path = 2;
+    string version = 3;
+}
+
+message InfoReply {
+    string compiler_version = 1;
+    repeated CompilerToolInfo compiler_tools = 2;
+}
+
+
+
+
+
+
