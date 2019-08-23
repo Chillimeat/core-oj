@@ -9,6 +9,7 @@ enum CompileResponseCode {
     Ok = 0;
     FileNotFound = 1;
     CompileTimeLimitExceed = 2;
+    CompileError = 3;
 }
 
 
@@ -19,11 +20,13 @@ service Compiler {
 
 message CompileRequest {
     string compiler_type = 1;
-    bytes code_path = 2;
+    string code_path = 2;
+    string aim_path = 3;
 }
 
 message CompileReply {
     CompileResponseCode response_code =1;
+    bytes info = 2;
 }
 
 message InfoRequest {

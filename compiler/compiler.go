@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"google.golang.org/grpc"
 )
@@ -22,6 +23,13 @@ func NewPortMap() (pb *PortMap) {
 	pb = new(PortMap)
 	*pb = PortMap(make(nat.PortMap))
 	return pb
+}
+
+type VolumeMap []mount.Mount
+
+func NewVolumeMap() (vp *VolumeMap) {
+	vp = new(VolumeMap)
+	return vp
 }
 
 // Insert a port mapping into the Port Map
@@ -40,16 +48,26 @@ func (pb *PortMap) Insert(ip, u, v string) error {
 	return nil
 }
 
+func (vp *VolumeMap) InsertBind(source, target string) {
+	*vp = append(*vp, mount.Mount{
+		Type:   mount.TypeBind,
+		Source: source,
+		Target: target,
+	})
+}
+
 // ContainerConfig decides the container's configuration
 type ContainerConfig struct {
 	PortMap     *PortMap
+	VolumeMap   *VolumeMap
 	GrpcAddress string
 }
 
 // NewContainerConfig return a pointer of ContainerConfig
 func NewContainerConfig() *ContainerConfig {
 	return &ContainerConfig{
-		PortMap: NewPortMap(),
+		PortMap:   NewPortMap(),
+		VolumeMap: NewVolumeMap(),
 	}
 }
 
@@ -70,7 +88,7 @@ func StartCompiler(containerInfo *types.Container, cli *client.Client, config *C
 
 	cp = new(Compiler)
 
-	fmt.Printf("Container %s is started", containerInfo.ID)
+	fmt.Printf("Container %s is started\n", containerInfo.ID)
 	cp.container = containerInfo
 	cp.conn, err = grpc.Dial(config.GrpcAddress, grpc.WithInsecure())
 	if err != nil {
@@ -92,19 +110,25 @@ func BuildAndStartCompiler(name string, cli *client.Client, config *ContainerCon
 		return StartCompiler(containerInfo, cli, config)
 	}
 
-	containerResult, err := cli.ContainerCreate(
+	_, err = cli.ContainerCreate(
 		context.Background(),
 		&container.Config{
 			Image: "core-oj/compiler",
 		},
 		&container.HostConfig{
 			PortBindings: nat.PortMap(*config.PortMap),
+			Mounts:       []mount.Mount(*config.VolumeMap),
+			Resources: container.Resources{
+				Memory:    1024 * 1024 * 256,
+				CPUQuota:  10000,
+				CPUPeriod: 50000,
+			},
 		}, nil, name,
 	)
 	if err != nil {
 		return nil, err
 	}
-	containerInfo, err = client.SearchContainerByID(cli, containerResult.ID)
+	containerInfo, err = client.SearchContainerByName(cli, "/"+name)
 
 	return StartCompiler(containerInfo, cli, config)
 }

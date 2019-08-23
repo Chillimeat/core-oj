@@ -6,7 +6,7 @@ import (
 	rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
 )
 
-const version = "v0.0.1"
+const version = "v0.0.4"
 
 // InfoService serve info
 type InfoService struct {

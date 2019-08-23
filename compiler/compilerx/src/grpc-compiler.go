@@ -9,22 +9,34 @@ import (
 
 	service "github.com/Myriad-Dreamin/core-oj/compiler/compilerx/src/service"
 
+	cpp "github.com/Myriad-Dreamin/core-oj/compiler/compilerx/src/cpp"
+	types "github.com/Myriad-Dreamin/core-oj/types"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 // Server is the grpc server for compiling codes
 type Server struct {
+	Compilers map[string]types.Compiler
 }
 
 // NewServer return a pointer of grpc server
 func NewServer() (*Server, error) {
 	var srv = new(Server)
+
+	srv.Compilers = make(map[string]types.Compiler)
+	srv.Compilers["c++11"] = &cpp.Compiler{
+		Path: "g++",
+		Args: []string{"-std=c++11"},
+	}
+
 	return srv, nil
 }
 
 func (srv *Server) Compile(ctx context.Context, in *rpcx.CompileRequest) (*rpcx.CompileReply, error) {
 	return (&service.CompileService{
+		Compilers:      srv.Compilers,
 		Context:        ctx,
 		CompileRequest: in,
 	}).Serve()

@@ -13,6 +13,9 @@ func TestBuildAndStartCompiler(t *testing.T) {
 		return
 	}
 	config := NewContainerConfig()
-	config.PortMap.Insert("127.0.0.1", "23366", "23367")
+	config.PortMap.Insert("127.0.0.1", "23368", "23366")
+	config.VolumeMap.InsertBind("test", "/codes")
+	config.VolumeMap.InsertBind("compiler_tools", "/compiler_tools")
+	config.GrpcAddress = "127.0.0.1:23368"
 	BuildAndStartCompiler("compiler", cli, config)
 }
