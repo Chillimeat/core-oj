@@ -119,9 +119,10 @@ func BuildAndStartCompiler(name string, cli *client.Client, config *ContainerCon
 			PortBindings: nat.PortMap(*config.PortMap),
 			Mounts:       []mount.Mount(*config.VolumeMap),
 			Resources: container.Resources{
-				Memory:    1024 * 1024 * 256,
-				CPUQuota:  10000,
-				CPUPeriod: 50000,
+				Memory:     1024 * 1024 * 256,
+				MemorySwap: 1024 * 1024 * 256,
+				CPUQuota:   10000,
+				CPUPeriod:  50000,
 			},
 		}, nil, name,
 	)
