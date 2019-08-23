@@ -21,4 +21,12 @@ func RegisterEngine(y *xorm.Engine) {
 		log.Fatal("数据表同步失败:", err)
 	}
 
+	if err := x.Sync(new(Problem)); err != nil {
+		log.Fatal("数据表同步失败:", err)
+	}
+
+	if err := x.Sync(new(RuntimeProblem)); err != nil {
+		log.Fatal("数据表同步失败:", err)
+	}
+
 }
