@@ -5,6 +5,7 @@ import "github.com/go-xorm/xorm"
 // Code records the code in online judge
 type Code struct {
 	ID        int `xorm:"not null pk autoincr"`
+	CodeType  string
 	Hash      []byte
 	OwnedUID  int
 	ProblemID int
