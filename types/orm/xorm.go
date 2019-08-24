@@ -31,12 +31,12 @@ func (obj *Object) Insert() (int64, error) {
 
 // Delete from Engine
 func (obj *Object) Delete() (int64, error) {
-	return x.Id(obj.ID).Delete(obj)
+	return x.ID(obj.ID).Delete(obj)
 }
 
 // Update to Engine
 func (obj *Object) Update() (int64, error) {
-	return x.Id(obj.ID).Update(obj)
+	return x.ID(obj.ID).Update(obj)
 }
 
 // Query from Engine
@@ -77,37 +77,37 @@ func (objx *Objector) ColsQuerys(objs []Object, cols ...string) error {
 	return x.Cols(cols...).Find(objs)
 }
 
-// Where provides custom query condition.
+// Where provIDes custom query condition.
 func (objx *Objector) Where(query interface{}, args ...interface{}) *ObjectorSession {
 	return (*ObjectorSession)(x.Where(query, args...))
 }
 
-// Where provides custom query condition.
+// Where provIDes custom query condition.
 func (objx *ObjectorSession) Where(query interface{}, args ...interface{}) *ObjectorSession {
 	return (*ObjectorSession)(((*xorm.Session)(objx)).Where(query, args...))
 }
 
-// And provides custom query condition.
+// And provIDes custom query condition.
 func (objx *ObjectorSession) And(query interface{}, args ...interface{}) *ObjectorSession {
 	return (*ObjectorSession)(((*xorm.Session)(objx)).And(query, args...))
 }
 
-// Or provides custom query condition.
+// Or provIDes custom query condition.
 func (objx *ObjectorSession) Or(query interface{}, args ...interface{}) *ObjectorSession {
 	return (*ObjectorSession)(((*xorm.Session)(objx)).Or(query, args...))
 }
 
-// ID provides custom query condition.
+// ID provIDes custom query condition.
 func (objx *ObjectorSession) ID(query interface{}) *ObjectorSession {
 	return (*ObjectorSession)(((*xorm.Session)(objx)).ID(query))
 }
 
-// NotIn provides custom query condition.
+// NotIn provIDes custom query condition.
 func (objx *ObjectorSession) NotIn(query string, args ...interface{}) *ObjectorSession {
 	return (*ObjectorSession)(((*xorm.Session)(objx)).NotIn(query, args...))
 }
 
-// In provides custom query condition.
+// In provIDes custom query condition.
 func (objx *ObjectorSession) In(query string, args ...interface{}) *ObjectorSession {
 	return (*ObjectorSession)(((*xorm.Session)(objx)).In(query, args...))
 }

@@ -58,7 +58,7 @@ func (srv *Server) Serve(port string) error {
 		codeRouter.GET("/:id", cs.Get)
 		codeRouter.GET("/:id/content", cs.GetContent)
 		codeRouter.POST("/postform", cs.PostForm)
-		codeRouter.PUT("/:id/updateform-runtimeid", cs.UpdateRuntimeID)
+		// codeRouter.PUT("/:id/updateform-runtimeid", cs.UpdateRuntimeID)
 		codeRouter.DELETE("/:id", cs.Delete)
 	}
 

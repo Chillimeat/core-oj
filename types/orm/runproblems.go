@@ -7,11 +7,6 @@ import (
 // RuntimeProblem example
 type RuntimeProblem struct {
 	ID int `xorm:"not null pk autoincr"`
-
-	Name           string
-	Password       []byte
-	Exp            int
-	SolvedProblems int
 }
 
 // TableName return the table name
@@ -36,12 +31,12 @@ func (obj *RuntimeProblem) Insert() (int64, error) {
 
 // Delete from Engine
 func (obj *RuntimeProblem) Delete() (int64, error) {
-	return x.Id(obj.ID).Delete(obj)
+	return x.ID(obj.ID).Delete(obj)
 }
 
 // Update to Engine
 func (obj *RuntimeProblem) Update() (int64, error) {
-	return x.Id(obj.ID).Update(obj)
+	return x.ID(obj.ID).Update(obj)
 }
 
 // Query from Engine
@@ -56,7 +51,7 @@ type RuntimeProblemer struct {
 // RuntimeProblemSession Extend the Engine operation
 type RuntimeProblemSession xorm.Session
 
-// Query return the code with Property property
+// Query return the runtime problem with Property property
 func (objx *RuntimeProblemer) Query(property int) (*RuntimeProblem, error) {
 	obj := new(RuntimeProblem)
 	obj.ID = property
@@ -67,16 +62,16 @@ func (objx *RuntimeProblemer) Query(property int) (*RuntimeProblem, error) {
 	return nil, err
 }
 
-// QueryName return the code with Property property
-func (objx *RuntimeProblemer) QueryName(property string) (*RuntimeProblem, error) {
-	obj := new(RuntimeProblem)
-	obj.Name = property
-	has, err := x.Get(obj)
-	if has {
-		return obj, nil
-	}
-	return nil, err
-}
+// QueryName return the runtime problem with Property property
+// func (objx *RuntimeProblemer) QueryName(property string) (*RuntimeProblem, error) {
+// 	obj := new(RuntimeProblem)
+// 	obj.Name = property
+// 	has, err := x.Get(obj)
+// 	if has {
+// 		return obj, nil
+// 	}
+// 	return nil, err
+// }
 
 // Inserts many Users
 func (objx *RuntimeProblemer) Inserts(objs []RuntimeProblem) (int64, error) {
@@ -93,37 +88,37 @@ func (objx *RuntimeProblemer) ColsQuerys(objs []RuntimeProblem, cols ...string) 
 	return x.Cols(cols...).Find(objs)
 }
 
-// Where provides custom query condition.
+// Where provIDes custom query condition.
 func (objx *RuntimeProblemer) Where(query interface{}, args ...interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(x.Where(query, args...))
 }
 
-// Where provides custom query condition.
+// Where provIDes custom query condition.
 func (objx *RuntimeProblemSession) Where(query interface{}, args ...interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(((*xorm.Session)(objx)).Where(query, args...))
 }
 
-// And provides custom query condition.
+// And provIDes custom query condition.
 func (objx *RuntimeProblemSession) And(query interface{}, args ...interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(((*xorm.Session)(objx)).And(query, args...))
 }
 
-// Or provides custom query condition.
+// Or provIDes custom query condition.
 func (objx *RuntimeProblemSession) Or(query interface{}, args ...interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(((*xorm.Session)(objx)).Or(query, args...))
 }
 
-// ID provides custom query condition.
+// ID provIDes custom query condition.
 func (objx *RuntimeProblemSession) ID(query interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(((*xorm.Session)(objx)).ID(query))
 }
 
-// NotIn provides custom query condition.
+// NotIn provIDes custom query condition.
 func (objx *RuntimeProblemSession) NotIn(query string, args ...interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(((*xorm.Session)(objx)).NotIn(query, args...))
 }
 
-// In provides custom query condition.
+// In provIDes custom query condition.
 func (objx *RuntimeProblemSession) In(query string, args ...interface{}) *RuntimeProblemSession {
 	return (*RuntimeProblemSession)(((*xorm.Session)(objx)).In(query, args...))
 }

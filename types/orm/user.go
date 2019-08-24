@@ -6,12 +6,12 @@ import (
 
 // User example
 type User struct {
-	ID int `xorm:"not null pk autoincr"`
+	ID int `xorm:"not null pk autoincr 'id'"`
 
-	Name           string
-	Password       []byte
-	Exp            int
-	SolvedProblems int
+	Name           string `xorm:"'name'"`
+	Password       []byte `xorm:"'password'"`
+	Exp            int    `xorm:"'exp'"`
+	SolvedProblems int    `xorm:"'solved_problems'"`
 }
 
 // TableName return the table name
@@ -36,12 +36,12 @@ func (obj *User) Insert() (int64, error) {
 
 // Delete from Engine
 func (obj *User) Delete() (int64, error) {
-	return x.Id(obj.ID).Delete(obj)
+	return x.ID(obj.ID).Delete(obj)
 }
 
 // Update to Engine
 func (obj *User) Update() (int64, error) {
-	return x.Id(obj.ID).Update(obj)
+	return x.ID(obj.ID).Update(obj)
 }
 
 // Query from Engine
@@ -56,7 +56,7 @@ type Userer struct {
 // UsererSession Extend the Engine operation
 type UsererSession xorm.Session
 
-// Query return the code with Property property
+// Query return the user with Property property
 func (objx *Userer) Query(property int) (*User, error) {
 	obj := new(User)
 	obj.ID = property
@@ -67,7 +67,7 @@ func (objx *Userer) Query(property int) (*User, error) {
 	return nil, err
 }
 
-// QueryName return the code with Property property
+// QueryName return the user with Property property
 func (objx *Userer) QueryName(property string) (*User, error) {
 	obj := new(User)
 	obj.Name = property
@@ -93,37 +93,37 @@ func (objx *Userer) ColsQuerys(objs []User, cols ...string) error {
 	return x.Cols(cols...).Find(objs)
 }
 
-// Where provides custom query condition.
+// Where provIDes custom query condition.
 func (objx *Userer) Where(query interface{}, args ...interface{}) *UsererSession {
 	return (*UsererSession)(x.Where(query, args...))
 }
 
-// Where provides custom query condition.
+// Where provIDes custom query condition.
 func (objx *UsererSession) Where(query interface{}, args ...interface{}) *UsererSession {
 	return (*UsererSession)(((*xorm.Session)(objx)).Where(query, args...))
 }
 
-// And provides custom query condition.
+// And provIDes custom query condition.
 func (objx *UsererSession) And(query interface{}, args ...interface{}) *UsererSession {
 	return (*UsererSession)(((*xorm.Session)(objx)).And(query, args...))
 }
 
-// Or provides custom query condition.
+// Or provIDes custom query condition.
 func (objx *UsererSession) Or(query interface{}, args ...interface{}) *UsererSession {
 	return (*UsererSession)(((*xorm.Session)(objx)).Or(query, args...))
 }
 
-// ID provides custom query condition.
+// ID provIDes custom query condition.
 func (objx *UsererSession) ID(query interface{}) *UsererSession {
 	return (*UsererSession)(((*xorm.Session)(objx)).ID(query))
 }
 
-// NotIn provides custom query condition.
+// NotIn provIDes custom query condition.
 func (objx *UsererSession) NotIn(query string, args ...interface{}) *UsererSession {
 	return (*UsererSession)(((*xorm.Session)(objx)).NotIn(query, args...))
 }
 
-// In provides custom query condition.
+// In provIDes custom query condition.
 func (objx *UsererSession) In(query string, args ...interface{}) *UsererSession {
 	return (*UsererSession)(((*xorm.Session)(objx)).In(query, args...))
 }

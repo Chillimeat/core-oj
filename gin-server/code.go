@@ -27,54 +27,6 @@ func NewCodeService() *CodeService {
 	}
 }
 
-// UpdateRuntimeID modify the runtime id of codes
-func (cr *CodeService) UpdateRuntimeID(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.AbortWithError(404, err)
-		return
-	}
-
-	code, err := cr.Coder.Query(int(id))
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	runtimeID, ok := c.GetPostForm("runtimeid")
-	if !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": CodeCodeRuntimeIDMissing,
-		})
-		return
-	}
-	var runtimeIDx int64
-	runtimeIDx, err = strconv.ParseInt(runtimeID, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"code": CodeCodeRuntimeIDMissing,
-		})
-		return
-	}
-	code.RuntimeID = int(runtimeIDx)
-	affected, err := code.Update()
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	if affected != 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code":      CodeOK,
-			"id":        code.ID,
-			"runtimeid": code.RuntimeID,
-		})
-	} else {
-		c.JSON(http.StatusOK, gin.H{
-			"code": CodeUpdateFailed,
-		})
-	}
-
-}
-
 // Delete codes from database
 func (cr *CodeService) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -100,7 +52,7 @@ func (cr *CodeService) Delete(c *gin.Context) {
 			"hash":      code.Hash,
 			"owneruid":  code.OwnedUID,
 			"problemid": code.ProblemID,
-			"runtimeid": code.RuntimeID,
+			"status":    code.Status,
 		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
@@ -128,7 +80,7 @@ func (cr *CodeService) Get(c *gin.Context) {
 			"hash":      code.Hash,
 			"owneruid":  code.OwnedUID,
 			"problemid": code.ProblemID,
-			"runtimeid": code.RuntimeID,
+			"status":    code.Status,
 		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
@@ -170,7 +122,7 @@ func (cr *CodeService) GetContent(c *gin.Context) {
 			"content":   string(b),
 			"owneruid":  code.OwnedUID,
 			"problemid": code.ProblemID,
-			"runtimeid": code.RuntimeID,
+			"status":    code.Status,
 		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
@@ -277,7 +229,8 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 		return
 	}
 
-	code.RuntimeID = 0
+	code.Status = StatusWaitingForJudge
+	cr.Coder.PushTask(code)
 
 	affected, err := code.Insert()
 	if err != nil {
@@ -291,7 +244,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 			"hash":      code.Hash,
 			"owneruid":  code.OwnedUID,
 			"problemid": code.ProblemID,
-			"runtimeid": code.RuntimeID,
+			"status":    code.Status,
 		})
 	} else {
 		c.JSON(http.StatusOK, gin.H{
