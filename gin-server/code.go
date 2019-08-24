@@ -1,0 +1,301 @@
+package main
+
+import (
+	"bytes"
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strconv"
+
+	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
+	"github.com/gin-gonic/gin"
+)
+
+// CodeService defines handler functions of code router
+type CodeService struct {
+	Coder *morm.Coder
+}
+
+// NewCodeService return a pointer of CodeService
+func NewCodeService() *CodeService {
+	return &CodeService{
+		Coder: new(morm.Coder),
+	}
+}
+
+// UpdateRuntimeID modify the runtime id of codes
+func (cr *CodeService) UpdateRuntimeID(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.AbortWithError(404, err)
+		return
+	}
+
+	code, err := cr.Coder.Query(int(id))
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	runtimeID, ok := c.GetPostForm("runtimeid")
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeRuntimeIDMissing,
+		})
+		return
+	}
+	var runtimeIDx int64
+	runtimeIDx, err = strconv.ParseInt(runtimeID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeRuntimeIDMissing,
+		})
+		return
+	}
+	code.RuntimeID = int(runtimeIDx)
+	affected, err := code.Update()
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if affected != 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":      CodeOK,
+			"id":        code.ID,
+			"runtimeid": code.RuntimeID,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeUpdateFailed,
+		})
+	}
+
+}
+
+// Delete codes from database
+func (cr *CodeService) Delete(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.AbortWithError(404, err)
+		return
+	}
+
+	code, err := cr.Coder.Query(int(id))
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	affected, err := code.Delete()
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if affected != 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":      CodeOK,
+			"id":        code.ID,
+			"hash":      code.Hash,
+			"owneruid":  code.OwnedUID,
+			"problemid": code.ProblemID,
+			"runtimeid": code.RuntimeID,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeDeleteFailed,
+		})
+	}
+
+}
+
+// Get codes from database
+func (cr *CodeService) Get(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.AbortWithError(404, err)
+		return
+	}
+	code, err := cr.Coder.Query(int(id))
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if code != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":      CodeOK,
+			"hash":      code.Hash,
+			"owneruid":  code.OwnedUID,
+			"problemid": code.ProblemID,
+			"runtimeid": code.RuntimeID,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeNotFound,
+		})
+	}
+}
+
+// GetContent codes from database with content
+func (cr *CodeService) GetContent(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.AbortWithError(404, err)
+		return
+	}
+	code, err := cr.Coder.Query(int(id))
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if code != nil {
+
+		f, err := os.Open(codepath + hex.EncodeToString(code.Hash) + "/main.cpp")
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
+		b, err := ioutil.ReadAll(f)
+		f.Close()
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeOK,
+			"hash": code.Hash,
+			// todo: hack b to string
+			"content":   string(b),
+			"owneruid":  code.OwnedUID,
+			"problemid": code.ProblemID,
+			"runtimeid": code.RuntimeID,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeNotFound,
+		})
+	}
+}
+
+// PostForm codes to database
+func (cr *CodeService) PostForm(c *gin.Context) {
+	code := new(morm.Code)
+	var ok bool
+	if code.CodeType, ok = c.GetPostForm("type"); !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeTypeMissing,
+		})
+		return
+	}
+	var problemID string
+	if problemID, ok = c.GetPostForm("problemid"); !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeProblemIDMissing,
+		})
+		return
+	}
+	var problemIDx int64
+	problemIDx, err := strconv.ParseInt(problemID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeProblemIDMissing,
+		})
+		return
+	}
+	code.ProblemID = int(problemIDx)
+	// todo: find problemid
+
+	var ownerUID string
+	if ownerUID, ok = c.GetPostForm("owneruid"); !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeOwnerUIDMissing,
+		})
+		return
+	}
+	var ownerUIDx int64
+	ownerUIDx, err = strconv.ParseInt(ownerUID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeOwnerUIDMissing,
+		})
+		return
+	}
+	code.OwnedUID = int(ownerUIDx)
+	// todo: find problemid
+
+	var body string
+	if body, ok = c.GetPostForm("body"); !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeBodyMissing,
+		})
+		return
+	}
+
+	codeHash := md5.New()
+
+	buf := bytes.NewBufferString(body)
+	var p = make([]byte, 0)
+	_, err = io.TeeReader(buf, codeHash).Read(p)
+	fmt.Println(p)
+
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	code.Hash = codeHash.Sum(nil)
+
+	if cx, err := cr.Coder.QueryHash(code.Hash); err != nil {
+		c.AbortWithError(500, err)
+		return
+	} else if cx != nil {
+		c.JSON(200, gin.H{
+			"code": CodeCodeUploaded,
+		})
+		return
+	}
+
+	var path = codepath + hex.EncodeToString(code.Hash)
+
+	err = os.Mkdir(path, 0777)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	f, err := os.Create(path + "/main.cpp")
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	_, err = f.WriteString(body)
+	f.Close()
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	code.RuntimeID = 0
+
+	affected, err := code.Insert()
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if affected != 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"code":      CodeOK,
+			"id":        code.ID,
+			"hash":      code.Hash,
+			"owneruid":  code.OwnedUID,
+			"problemid": code.ProblemID,
+			"runtimeid": code.RuntimeID,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeInsertFailed,
+		})
+	}
+}
