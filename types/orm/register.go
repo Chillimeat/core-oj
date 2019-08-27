@@ -14,19 +14,19 @@ func RegisterEngine(y *xorm.Engine) {
 	x = y
 
 	if err := x.Sync(new(Code)); err != nil {
-		log.Fatal("数据表同步失败:", err)
+		log.Fatal("Syn Error: Code:", err)
 	}
 
 	if err := x.Sync(new(User)); err != nil {
-		log.Fatal("数据表同步失败:", err)
+		log.Fatal("Syn Error: User:", err)
 	}
 
 	if err := x.Sync(new(Problem)); err != nil {
-		log.Fatal("数据表同步失败:", err)
+		log.Fatal("Syn Error: Problem:", err)
 	}
 
 	if err := x.Sync(new(RuntimeProblem)); err != nil {
-		log.Fatal("数据表同步失败:", err)
+		log.Fatal("Syn Error: RuntimeProblem:", err)
 	}
 
 }

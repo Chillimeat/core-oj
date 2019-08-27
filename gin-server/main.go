@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Myriad-Dreamin/core-oj/log"
@@ -45,6 +46,16 @@ func (srv *Server) prepareDatabase(driver, connection string) error {
 }
 
 func (srv *Server) Serve(port string) error {
+
+	coder, err := morm.NewCoder()
+	if err != nil {
+		return err
+	}
+	judgeService, err := NewJudgeService(coder, srv.logger)
+	if err != nil {
+		return err
+	}
+
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -54,14 +65,17 @@ func (srv *Server) Serve(port string) error {
 
 	codeRouter := r.Group("/code")
 	{
-		var cs = NewCodeService()
-		codeRouter.GET("/:id", cs.Get)
-		codeRouter.GET("/:id/content", cs.GetContent)
-		codeRouter.POST("/postform", cs.PostForm)
-		// codeRouter.PUT("/:id/updateform-runtimeid", cs.UpdateRuntimeID)
-		codeRouter.DELETE("/:id", cs.Delete)
+		var codeService = NewCodeService(coder, srv.logger)
+		codeRouter.GET("/:id", codeService.Get)
+		codeRouter.GET("/:id/content", codeService.GetContent)
+		codeRouter.POST("/postform", codeService.PostForm)
+		// codeRouter.PUT("/:id/updateform-runtimeid", codeService.UpdateRuntimeID)
+		codeRouter.DELETE("/:id", codeService.Delete)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	go judgeService.ProcessAllCodes(ctx)
+	defer cancel()
 	return r.Run(port)
 }
 

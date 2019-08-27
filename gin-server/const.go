@@ -23,6 +23,8 @@ const (
 	CodeCodeRuntimeIDMissing
 	// CodeCodeBodyMissing means the the body of code is missing in pushed form
 	CodeCodeBodyMissing
+	// CodeCodeTypeUnknown means the the problemid of code is not known by core-oj
+	CodeCodeTypeUnknown
 	// CodeCodeUploaded means the the code is already founded in the database
 	CodeCodeUploaded
 )

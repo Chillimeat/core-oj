@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
+	"github.com/Myriad-Dreamin/core-oj/types"
 )
 
 func TestBuildAndStartCompiler(t *testing.T) {
@@ -12,10 +13,11 @@ func TestBuildAndStartCompiler(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	config := NewContainerConfig()
+	config := client.NewContainerConfig()
+	cconfig := &types.CompilerConfig{GrpcAddress: "127.0.0.1:23367"}
 	config.PortMap.Insert("127.0.0.1", "23368", "23366")
 	config.VolumeMap.InsertBind("test", "/codes")
 	config.VolumeMap.InsertBind("compiler_tools", "/compiler_tools")
-	config.GrpcAddress = "127.0.0.1:23368"
-	BuildAndStartCompiler("compiler", cli, config)
+	cconfig.GrpcAddress = "127.0.0.1:23368"
+	BuildAndStartCompiler("compiler", cli, cconfig, config)
 }

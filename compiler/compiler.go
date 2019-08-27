@@ -8,78 +8,23 @@ import (
 
 	rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
 
-	"github.com/docker/docker/api/types"
+	"github.com/Myriad-Dreamin/core-oj/types"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"google.golang.org/grpc"
 )
 
-// PortMap helps insert port mapping
-type PortMap nat.PortMap
-
-// NewPortMap return a pointer of PortMap
-func NewPortMap() (pb *PortMap) {
-	pb = new(PortMap)
-	*pb = PortMap(make(nat.PortMap))
-	return pb
-}
-
-type VolumeMap []mount.Mount
-
-func NewVolumeMap() (vp *VolumeMap) {
-	vp = new(VolumeMap)
-	return vp
-}
-
-// Insert a port mapping into the Port Map
-func (pb *PortMap) Insert(ip, u, v string) error {
-
-	containerPort, err := nat.NewPort("tcp", v)
-
-	if err != nil {
-		return fmt.Errorf("unable to get the port:%v", v)
-	}
-
-	(*pb)[containerPort] = []nat.PortBinding{nat.PortBinding{
-		HostIP:   ip,
-		HostPort: u,
-	}}
-	return nil
-}
-
-func (vp *VolumeMap) InsertBind(source, target string) {
-	*vp = append(*vp, mount.Mount{
-		Type:   mount.TypeBind,
-		Source: source,
-		Target: target,
-	})
-}
-
-// ContainerConfig decides the container's configuration
-type ContainerConfig struct {
-	PortMap     *PortMap
-	VolumeMap   *VolumeMap
-	GrpcAddress string
-}
-
-// NewContainerConfig return a pointer of ContainerConfig
-func NewContainerConfig() *ContainerConfig {
-	return &ContainerConfig{
-		PortMap:   NewPortMap(),
-		VolumeMap: NewVolumeMap(),
-	}
-}
-
 type Compiler struct {
-	container *types.Container
+	container *dockertypes.Container
 	conn      *grpc.ClientConn
-	c         rpcx.CompilerClient
+	rpcx.CompilerClient
 }
 
-func StartCompiler(containerInfo *types.Container, cli *client.Client, config *ContainerConfig) (cp *Compiler, err error) {
+func StartCompiler(containerInfo *dockertypes.Container, cli *client.Client, cconfig *types.CompilerConfig, config *client.ContainerConfig) (cp *Compiler, err error) {
 	if containerInfo.Status != "running" {
-		err = cli.ContainerStart(context.Background(), containerInfo.ID, types.ContainerStartOptions{})
+		err = cli.ContainerStart(context.Background(), containerInfo.ID, dockertypes.ContainerStartOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -90,16 +35,16 @@ func StartCompiler(containerInfo *types.Container, cli *client.Client, config *C
 
 	fmt.Printf("Container %s is started\n", containerInfo.ID)
 	cp.container = containerInfo
-	cp.conn, err = grpc.Dial(config.GrpcAddress, grpc.WithInsecure())
+	cp.conn, err = grpc.Dial(cconfig.GrpcAddress, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-	cp.c = rpcx.NewCompilerClient(cp.conn)
+	cp.CompilerClient = rpcx.NewCompilerClient(cp.conn)
 	return
 }
 
 // BuildAndStartCompiler create a new compiler container
-func BuildAndStartCompiler(name string, cli *client.Client, config *ContainerConfig) (cp *Compiler, err error) {
+func BuildAndStartCompiler(name string, cli *client.Client, cconfig *types.CompilerConfig, config *client.ContainerConfig) (cp *Compiler, err error) {
 	containerInfo, err := client.SearchContainerByName(cli, "/"+name)
 	if err != nil {
 		return nil, err
@@ -107,7 +52,7 @@ func BuildAndStartCompiler(name string, cli *client.Client, config *ContainerCon
 	fmt.Println(containerInfo)
 
 	if containerInfo != nil {
-		return StartCompiler(containerInfo, cli, config)
+		return StartCompiler(containerInfo, cli, cconfig, config)
 	}
 
 	_, err = cli.ContainerCreate(
@@ -131,7 +76,7 @@ func BuildAndStartCompiler(name string, cli *client.Client, config *ContainerCon
 	}
 	containerInfo, err = client.SearchContainerByName(cli, "/"+name)
 
-	return StartCompiler(containerInfo, cli, config)
+	return StartCompiler(containerInfo, cli, cconfig, config)
 }
 
 func (cp *Compiler) Close() {

@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  compiler:
+    container_name: compilerx
+    ports:
+      - "23367:23366"
+    image: core-oj/compiler
+    environment:
+      - VERSION=v0.0.1
+    volumes:
+      - ./codes:/codes
+      - ./compiler_tools:/compiler_tools
+  

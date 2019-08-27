@@ -4,34 +4,29 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
+	types "github.com/Myriad-Dreamin/core-oj/types"
 	"github.com/go-xorm/xorm"
 )
 
 const (
-	StatusWaitingForJudge int = iota
-	StatusAccepted
-	StatusRunning
-	StatusCompiling
-	StatusCompileError
-	StatusCompileTimeout
-	StatusWrongAnswer
-	StatusTimeLimitExceed
-	StatusMemoryLimitExceed
-	StatusSystemError
-	StatusUnknownError
-	StatusPresentationError
-	StatusRuntimeError
+	CodeTypeCpp11 int = iota
 )
+
+var CodeTypeMap = map[string]int{
+	"c++11": CodeTypeCpp11,
+}
 
 // Code records the code in online judge
 type Code struct {
-	ID        int    `xorm:"not null pk autoincr"`
-	CodeType  string `xorm:"'code_type'"`
+	ID        int    `xorm:"not null pk autoinobjx 'id'"`
+	CodeType  int    `xorm:"'code_type'"`
 	Hash      []byte `xorm:"'hash'"`
 	OwnedUID  int    `xorm:"'owner_uid'"`
 	ProblemID int    `xorm:"'problem_id'"`
-	Status    int    `xorm:"'status'"`
+	// Warning: unsafeConvert Exists
+	Status int `xorm:"'status'"`
 }
 
 type CodeSlice []Code
@@ -101,6 +96,7 @@ func newList() (l *list) {
 	l.begin.nx = l.end
 	l.end.ls = l.begin
 	l.begin.v = 0
+	return
 }
 
 func (l *list) Len() int {
@@ -122,22 +118,21 @@ func (l *list) PopBack() (v int) {
 	}
 	v = l.end.ls.v
 	l.end.ls.ls.nx = l.end
-	l.end.ls = l.ls.ls
+	l.end.ls = l.end.ls.ls
 	return
 }
 
 // Coder Extend the Engine operation
 type Coder struct {
-	aliveID    int64
-	lastID     int64
+	// aliveID    int64
+	// lastID     int64
 	mutex      sync.Mutex
 	aliveCodes map[int]*Code
 
-	head list
+	// head list
 
-	waitingCodes   chan int
-	CompilingCodes chan *Code
-	RunningCodes   chan *Code
+	WaitingCodes chan *Code
+	RunningCodes chan *Code
 }
 
 func min(l, r int64) int64 {
@@ -154,55 +149,16 @@ func max(l, r int64) int64 {
 	return r
 }
 
-func NewCoder() (cr *Coder, err error) {
-	cr = new(Coder)
-	cr.waitingCodes = make(chan int, 10000)
-	cr.CompilingCodes = make(chan *Code, 10000)
-	cr.RunningCodes = make(chan *Code, 10000)
+func NewCoder() (objx *Coder, err error) {
+	objx = new(Coder)
+	objx.aliveCodes = make(map[int]*Code)
+	objx.WaitingCodes = make(chan *Code, 10000)
+	objx.RunningCodes = make(chan *Code, 10000)
 
-	cr.aliveID = 0x7fffffffffffffff
+	// objx.aliveID = 0x7fffffffffffffff
 
-	var cond = &Code{Status: StatusCompiling}
-	codes, err := cr.Find(cond)
-	if err != nil {
-		return nil, err
-	}
-	if len(codes) != 0 {
-
-		sort.Sort(CodeSlice(codes))
-		cr.aliveID = codes[0].ID
-		cr.lastID = codes[len(codes)-1].ID
-	}
-
-	for _, code := range codes {
-		cr.aliveCodes[code.ID] = &code
-		cr.CompilingCodes <- &code
-	}
-
-	cond.Status = StatusRunning
-	codes, err = cr.Find(cond)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(codes) != 0 {
-
-		sort.Sort(CodeSlice(codes))
-		cr.aliveID = min(cr.aliveID, codes[0].ID)
-		cr.lastID = max(cr.lastID, codes[len(codes)-1].ID)
-	} else {
-		if cr.aliveID == 0x7fffffffffffffff {
-			cr.aliveID = 0
-		}
-	}
-
-	for _, code := range codes {
-		cr.aliveCodes[code.ID] = &code
-		cr.RunningCodes <- &code
-	}
-
-	cond.Status = StatusWaitingForJudge
-	codes, err = cr.Find(cond)
+	var cond = &Code{Status: types.StatusCompiling}
+	codes, err := objx.Find(cond)
 	if err != nil {
 		return nil, err
 	}
@@ -211,10 +167,38 @@ func NewCoder() (cr *Coder, err error) {
 	}
 
 	for _, code := range codes {
-		cr.waitingCodes <- code.ID
+		objx.WaitingCodes <- &code
 	}
 
-	return cr, nil
+	cond.Status = types.StatusRunning
+	codes, err = objx.Find(cond)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(codes) != 0 {
+		sort.Sort(CodeSlice(codes))
+	}
+
+	for _, code := range codes {
+		objx.aliveCodes[code.ID] = &code
+		objx.RunningCodes <- &code
+	}
+
+	cond.Status = types.StatusWaitingForJudge
+	codes, err = objx.Find(cond)
+	if err != nil {
+		return nil, err
+	}
+	if len(codes) != 0 {
+		sort.Sort(CodeSlice(codes))
+	}
+
+	for _, code := range codes {
+		objx.WaitingCodes <- &code
+	}
+
+	return objx, nil
 
 }
 
@@ -223,6 +207,13 @@ type CoderSession xorm.Session
 
 // Query return the code with Property property
 func (objx *Coder) Query(property int) (*Code, error) {
+
+	if obj, ok := objx.aliveCodes[property]; ok {
+		obk := new(Code)
+		*obk = *obj
+		return (obk), nil
+	}
+
 	obj := new(Code)
 	obj.ID = property
 	has, err := x.Get(obj)
@@ -238,6 +229,9 @@ func (objx *Coder) QueryHash(property []byte) (*Code, error) {
 	obj.Hash = property
 	has, err := x.Get(obj)
 	if has {
+		if obk, ok := objx.aliveCodes[obj.ID]; ok {
+			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+		}
 		return obj, nil
 	}
 	return nil, err
@@ -249,6 +243,9 @@ func (objx *Coder) QueryOwnedUID(property int) (*Code, error) {
 	obj.OwnedUID = property
 	has, err := x.Get(obj)
 	if has {
+		if obk, ok := objx.aliveCodes[obj.ID]; ok {
+			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+		}
 		return obj, nil
 	}
 	return nil, err
@@ -260,21 +257,27 @@ func (objx *Coder) QueryProblemID(property int) (*Code, error) {
 	obj.ProblemID = property
 	has, err := x.Get(obj)
 	if has {
+		if obk, ok := objx.aliveCodes[obj.ID]; ok {
+			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+		}
 		return obj, nil
 	}
 	return nil, err
 }
 
-// QueryStatus return the code with Property property
-func (objx *Coder) QueryStatus(property int) (*Code, error) {
-	obj := new(Code)
-	obj.Status = property
-	has, err := x.Get(obj)
-	if has {
-		return obj, nil
-	}
-	return nil, err
-}
+// // QueryStatus return the code with Property property
+// func (objx *Coder) QueryStatus(property int) (*Code, error) {
+// 	obj := new(Code)
+// 	obj.Status = property
+// 	has, err := x.Get(obj)
+// 	if has {
+// 		if obk, ok := objx.aliveCodes[obj.ID]; ok {
+// 			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+// 		}
+// 		return obj, nil
+// 	}
+// 	return nil, err
+// }
 
 // Inserts many objects
 func (objx *Coder) Inserts(objs []Code) (int64, error) {
@@ -344,36 +347,41 @@ func (objx *CoderSession) Find(conds ...interface{}) ([]Code, error) {
 	return objs, err
 }
 
-func (objx *Coder) PushTask(id int) error {
-	objx.waitingCodes <- id
+func (objx *Coder) ExposeWaitingCodes() chan *Code {
+	return objx.WaitingCodes
+}
+
+func (objx *Coder) ExposeRunningCodes() chan *Code {
+	return objx.RunningCodes
+}
+
+func (objx *Coder) PushTask(code *Code) error {
+	objx.WaitingCodes <- code
 	//todo check task queue
 	return nil
 }
 
-func (objx *Coder) StartToExecuteTask() (*Code, bool, error) {
-	if id, ok := <-objx.waitingCodes; ok {
-		code, err := objx.Query(id)
-		if err != nil {
-			objx.waitingCodes <- id
-			return nil, false, err
-		}
+func (objx *Coder) StartToExecuteTask(code *Code) error {
+	// objx.mutex.Lock()
+	objx.aliveCodes[code.ID] = code
+	// objx.mutex.Unlock()
 
-		objx.mutex.Lock()
-		objx.aliveCodes[id] = code
-		objx.mutex.Unlock()
-
-		atomic.StoreInt64(&objx.lastID, int64(id))
-		return code, true, nil
-	}
-	return nil, false, nil
+	return nil
 }
 
-func (objx *Coder) SettleTask(id int) bool {
-
-	atomic.StoreInt64(&objx.lastID, int64(id))
-
-	objx.mutex.Lock()
-	delete(objx.aliveCodes, id)
-	objx.mutex.Unlock()
-	return true
+func (objx *Coder) SettleTask(id int) (bool, error) {
+	// objx.mutex.Lock()
+	if code, ok := objx.aliveCodes[id]; ok {
+		affected, err := code.Update()
+		if err != nil {
+			return false, err
+		}
+		if affected == 0 {
+			return false, nil
+		}
+		delete(objx.aliveCodes, id)
+		return true, nil
+	}
+	// objx.mutex.Unlock()
+	return false, nil
 }

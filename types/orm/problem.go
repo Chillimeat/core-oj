@@ -6,7 +6,7 @@ import (
 
 // Problem example
 type Problem struct {
-	ID   int    `xorm:"not null pk autoincr"`
+	ID   int    `xorm:"not null pk autoincr 'id'"`
 	Name string `xorm:"'name'"`
 
 	TimeLimit   int `xorm:"'time_limit'"`   // in milliseconds

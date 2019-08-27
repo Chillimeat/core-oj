@@ -1,0 +1,3 @@
+[submodule "judger/testlib"]
+	path = judger/testlib
+	url = https://github.com/MikeMirzayanov/testlib

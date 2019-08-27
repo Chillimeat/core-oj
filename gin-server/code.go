@@ -11,19 +11,23 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Myriad-Dreamin/core-oj/log"
+	types "github.com/Myriad-Dreamin/core-oj/types"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 	"github.com/gin-gonic/gin"
 )
 
 // CodeService defines handler functions of code router
 type CodeService struct {
-	Coder *morm.Coder
+	Coder  *morm.Coder
+	logger log.TendermintLogger
 }
 
 // NewCodeService return a pointer of CodeService
-func NewCodeService() *CodeService {
+func NewCodeService(coder *morm.Coder, logger log.TendermintLogger) *CodeService {
 	return &CodeService{
-		Coder: new(morm.Coder),
+		Coder:  coder,
+		logger: logger,
 	}
 }
 
@@ -135,12 +139,23 @@ func (cr *CodeService) GetContent(c *gin.Context) {
 func (cr *CodeService) PostForm(c *gin.Context) {
 	code := new(morm.Code)
 	var ok bool
-	if code.CodeType, ok = c.GetPostForm("type"); !ok {
+
+	// rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
+	var codeType string
+	if codeType, ok = c.GetPostForm("type"); !ok {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeCodeTypeMissing,
 		})
 		return
 	}
+
+	if code.CodeType, ok = morm.CodeTypeMap[codeType]; !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeTypeUnknown,
+		})
+		return
+	}
+
 	var problemID string
 	if problemID, ok = c.GetPostForm("problemid"); !ok {
 		c.JSON(http.StatusOK, gin.H{
@@ -168,6 +183,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 	}
 	var ownerUIDx int64
 	ownerUIDx, err = strconv.ParseInt(ownerUID, 10, 64)
+
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeCodeOwnerUIDMissing,
@@ -210,27 +226,30 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 	}
 
 	var path = codepath + hex.EncodeToString(code.Hash)
-
-	err = os.Mkdir(path, 0777)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
+	if _, err = os.Stat(path); err != nil && !os.IsExist(err) {
+		err = os.Mkdir(path, 0777)
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
 	}
-
-	f, err := os.Create(path + "/main.cpp")
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
+	path += "/main.cpp"
+	if _, err = os.Stat(path); err != nil && !os.IsExist(err) {
+		f, err := os.Create(path)
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
+		_, err = f.WriteString(body)
+		f.Close()
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
 	}
-	_, err = f.WriteString(body)
-	f.Close()
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
+	err = nil
 
-	code.Status = StatusWaitingForJudge
-	cr.Coder.PushTask(code)
+	code.Status = types.StatusWaitingForJudge
 
 	affected, err := code.Insert()
 	if err != nil {
@@ -238,6 +257,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 		return
 	}
 	if affected != 0 {
+		cr.Coder.PushTask(code)
 		c.JSON(http.StatusOK, gin.H{
 			"code":      CodeOK,
 			"id":        code.ID,

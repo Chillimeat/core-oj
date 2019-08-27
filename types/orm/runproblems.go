@@ -6,7 +6,7 @@ import (
 
 // RuntimeProblem example
 type RuntimeProblem struct {
-	ID int `xorm:"not null pk autoincr"`
+	ID int `xorm:"not null pk autoincr 'id'"`
 }
 
 // TableName return the table name
