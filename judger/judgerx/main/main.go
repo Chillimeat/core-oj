@@ -61,7 +61,7 @@ func serve(conn *net.UnixConn) {
 
 	err := json.Unmarshal(buffer[0:lenBuffer], testCase)
 	if err != nil {
-		b, err := json.Marshal(&profiler.ProcState{0, types.SystemError{ProcErr: err}, 0, 0})
+		b, err := json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err}, 0, 0})
 		if err != nil {
 			panic(err)
 		}
@@ -74,7 +74,7 @@ func serve(conn *net.UnixConn) {
 
 	input, err := profiler.MakeInput(testCase)
 	if err != nil {
-		b, err = json.Marshal(&profiler.ProcState{0, types.SystemError{ProcErr: err}, 0, 0})
+		b, err = json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err}, 0, 0})
 		if err != nil {
 			panic(err)
 		}
