@@ -39,6 +39,8 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 	cmd := exec.CommandContext(ctx, testCase.TestPath)
 	cmd.Stdout = output
 	cmd.Stdin = input
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(23333), Gid: uint32(23333)}
 	if err := cmd.Run(); err != nil {
 		cancel()
 		if errr, ok := err.(*exec.ExitError); ok {
@@ -51,7 +53,7 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 				return &types.ProcState{
 					status.ExitStatus(),
 					types.RuntimeError{ProcErr: errors.New("exit status " + itoa(status.ExitStatus()))},
-					time.Second*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
+					time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 				}
 			case status.Signaled():
 				res = "signal: " + status.Signal().String()
@@ -80,7 +82,7 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 	cancel()
 
 	rusage := cmd.ProcessState.SysUsage().(*syscall.Rusage)
-	var timeUsed = time.Second*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec)
+	var timeUsed = time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec)
 
 	if timeUsed > testCase.TimeLimit {
 		return &types.ProcState{

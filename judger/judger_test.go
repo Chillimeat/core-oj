@@ -19,6 +19,7 @@ func TestBuildAndStartJudger(t *testing.T) {
 	config.VolumeMap.InsertBind("/home/kamiyoru/data/test", "/codes")
 	config.VolumeMap.InsertBind("/home/kamiyoru/data/judger_tools", "/judger_tools")
 	config.VolumeMap.InsertBind("/home/kamiyoru/data/problems", "/problems")
+	config.VolumeMap.InsertBind("/home/kamiyoru/data/checker_tools", "/checker_tools")
 	config.Env = append(config.Env, "NAME=judger")
 	js, err := BuildAndStartJudger("judger", cli, cconfig, config)
 	if err != nil {

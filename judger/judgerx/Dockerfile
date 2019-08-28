@@ -2,22 +2,19 @@ FROM alpine:latest
 
 LABEL Maintainer="Myriad-Dreamin <camiyoru@gmail.com>"
 
-# RUN su -
-# RUN groupadd core-qwqs
-# RUN useradd -g core-qwqs core-qwqer
-# USER core-qwqer:coreqwqs
 
-
-
+RUN apk add --no-cache acl
 RUN apk add --no-cache libstdc++ && apk add --no-cache libgcc
 
+VOLUME /codes /checker_tools /judger_tools /problems
 
-VOLUME [ /codes /checker_tools ]
+RUN mkdir -p /judger_tools/socks
+
 
 ENTRYPOINT [ "/run.sh" ]
 
 COPY run.sh /run.sh
 COPY judger /judger
-COPY sos-checker /sos-checker
+# COPY sos-checker /sos-checker
 
 

@@ -43,7 +43,7 @@ func Check(t *types.TestCase, output io.Reader) types.CodeError {
 		return types.JudgeError{ProcErr: errors.New("not read test status")}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	cmd := exec.CommandContext(ctx, "/sos-checker", "presu.txt", "stdin", t.StdOutputPath)
+	cmd := exec.CommandContext(ctx, "/judger_tools/sos-checker", "presu.txt", "stdin", t.StdOutputPath)
 	var jerrout = new(bytes.Buffer)
 	cmd.Stderr = jerrout
 	cmd.Stdin = output
