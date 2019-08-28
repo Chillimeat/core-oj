@@ -14,6 +14,7 @@ import (
 const DriverName = "mysql"
 const MasterDataSourceName = "coreoj-admin:123456@tcp(127.0.0.1:3306)/coreoj?charset=utf8"
 const codepath = "/home/kamiyoru/data/test/"
+const problempath = "/home/kamiyoru/data/problems/"
 
 type Server struct {
 	engine *xorm.Engine
@@ -51,6 +52,11 @@ func (srv *Server) Serve(port string) error {
 	if err != nil {
 		return err
 	}
+	problemer, err := morm.NewProblemer()
+	if err != nil {
+		return err
+	}
+
 	judgeService, err := NewJudgeService(coder, srv.logger)
 	if err != nil {
 		return err
@@ -73,6 +79,32 @@ func (srv *Server) Serve(port string) error {
 		codeRouter.DELETE("/:id", codeService.Delete)
 	}
 
+	var problemService = NewProblemService(problemer, srv.logger)
+	{
+		problemRouter := r.Group("/problem")
+		{
+
+			problemRouter.GET("/:id", problemService.Get)
+			problemRouter.POST("/postform", problemService.PostForm)
+			// problemRouter.PUT("/:id/updateform-runtimeid", problemService.UpdateRuntimeID)
+			problemRouter.DELETE("/:id", problemService.Delete)
+
+		}
+
+		problemFSRouter := r.Group("/problemfs")
+		{
+			problemFSRouter.GET("/:id/stat", problemService.Stat)
+			problemFSRouter.PUT("/:id/mkdir", problemService.Mkdir)
+			problemFSRouter.GET("/:id/ls", problemService.Ls)
+			problemFSRouter.GET("/:id/read", problemService.Read)
+			problemFSRouter.POST("/:id/write", problemService.Write)
+			problemFSRouter.POST("/:id/writes", problemService.Writes)
+			problemFSRouter.POST("/:id/zip", problemService.Zip)
+			problemFSRouter.GET("/:id/config", problemService.ReadConfigV2)
+			problemFSRouter.PUT("/:id/config", problemService.PutConfig)
+
+		}
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go judgeService.ProcessAllCodes(ctx)
 	defer cancel()

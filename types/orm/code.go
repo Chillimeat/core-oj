@@ -23,7 +23,7 @@ type Code struct {
 	ID        int    `xorm:"not null pk autoinobjx 'id'"`
 	CodeType  int    `xorm:"'code_type'"`
 	Hash      []byte `xorm:"'hash'"`
-	OwnedUID  int    `xorm:"'owner_uid'"`
+	OwnerUID  int    `xorm:"'owner_uid'"`
 	ProblemID int    `xorm:"'problem_id'"`
 	// Warning: unsafeConvert Exists
 	Status int `xorm:"'status'"`
@@ -237,10 +237,10 @@ func (objx *Coder) QueryHash(property []byte) (*Code, error) {
 	return nil, err
 }
 
-// QueryOwnedUID return the code with Property property
-func (objx *Coder) QueryOwnedUID(property int) (*Code, error) {
+// QueryOwnerUID return the code with Property property
+func (objx *Coder) QueryOwnerUID(property int) (*Code, error) {
 	obj := new(Code)
-	obj.OwnedUID = property
+	obj.OwnerUID = property
 	has, err := x.Get(obj)
 	if has {
 		if obk, ok := objx.aliveCodes[obj.ID]; ok {

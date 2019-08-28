@@ -1,0 +1,17 @@
+<Problem-Config>
+  <judge>
+    <judge-type>acm</judge-type>
+    <tasks>
+      <name>task</name>
+      <time-limit>1000000000</time-limit>
+      <memory-limit>262144</memory-limit>
+      <input-path>/codes/</input-path>
+      <output-path>/codes/</output-path>
+    </tasks>
+  </judge>
+  <special-judge>
+    <enable>true</enable>
+    <language-type>c++11</language-type>
+    <file-path>/spj.cpp</file-path>
+  </special-judge>
+</Problem-Config>

@@ -21,13 +21,18 @@ func NewDaemon(cli *client.Client) (dae *Daemon, err error) {
 
 	config := client.NewContainerConfig()
 	cconfig := &types.JudgerConfig{UnixAddress: "/home/kamiyoru/data/judger_tools/socks/judger0.sock"}
-	config.VolumeMap.InsertBind("home/kamiyoru/data/test", "/codes")
-	config.VolumeMap.InsertBind("home/kamiyoru/data/judger_tools", "/judger_tools")
-	cp, err := BuildAndStartJudger("judger0", dae.cli, cconfig, config)
+	config.VolumeMap.InsertBind("/home/kamiyoru/data/test", "/codes")
+	config.VolumeMap.InsertBind("/home/kamiyoru/data/judger_tools", "/judger_tools")
+	config.VolumeMap.InsertBind("/home/kamiyoru/data/problems", "/problems")
+	config.VolumeMap.InsertBind("/home/kamiyoru/data/checker_tools", "/checker_tools")
+	config.Env = append(config.Env, "NAME=judger0")
+	js, err := BuildAndStartJudger("judger0", cli, cconfig, config)
 	if err != nil {
-		return nil, err
+		dae = nil
+		return
 	}
-	dae.judgerPool <- cp
+
+	dae.judgerPool <- js
 	return
 }
 

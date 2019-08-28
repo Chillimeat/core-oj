@@ -27,4 +27,19 @@ const (
 	CodeCodeTypeUnknown
 	// CodeCodeUploaded means the the code is already founded in the database
 	CodeCodeUploaded
+
+	// CodeProblemNameMissing means the the name of problem is missing in pushed form
+	CodeProblemNameMissing
+	// CodeProblemPathMissing means the the path of problem is missing in pushed form
+	CodeProblemPathMissing
+	// CodeProblemIDMissing means the the id of problem is missing in pushed form
+	CodeProblemIDMissing
+	// CodeStatError means there is an error occured when stating files
+	CodeStatError
+	// CodeFSExecError means there is an error occured when opeating on file system
+	CodeFSExecError
+
+	CodeConfigKeyMissing
+	CodeConfigValueMissing
+	CodeConfigModifyError
 )

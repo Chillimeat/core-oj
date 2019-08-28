@@ -6,11 +6,9 @@ import (
 
 // Problem example
 type Problem struct {
-	ID   int    `xorm:"not null pk autoincr 'id'"`
-	Name string `xorm:"'name'"`
-
-	TimeLimit   int `xorm:"'time_limit'"`   // in milliseconds
-	MemoryLimit int `xorm:"'memory_limit'"` // in bytes
+	ID       int    `xorm:"not null pk autoincr 'id'"`
+	Name     string `xorm:"'name'"`
+	OwnerUID int    `xorm:"owner_uid"`
 
 	TestPath string `xorm:"'test_path'"` // config path
 }
@@ -52,6 +50,10 @@ func (obj *Problem) Query() (bool, error) {
 
 // Problemer Extend the Engine operation
 type Problemer struct {
+}
+
+func NewProblemer() (*Problemer, error) {
+	return new(Problemer), nil
 }
 
 // ProblemSession Extend the Engine operation

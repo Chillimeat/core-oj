@@ -27,6 +27,13 @@ const (
 	jtp = "/home/kamiyoru/data/judger_tools/socks/"
 )
 
+// func (js *Judger) Judge(testCase *TestCase) {
+// 	b, err := json.Marshal(testCase)
+// 	js.conn.Send(b)
+// 	b, err = js.conn.Receive()
+// 	fmt.Println(string(b), err)
+// }
+
 type SocketY struct {
 	*net.UnixConn
 	lenBuffer  int32

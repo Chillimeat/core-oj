@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -54,7 +53,7 @@ func (cr *CodeService) Delete(c *gin.Context) {
 			"code":      CodeOK,
 			"id":        code.ID,
 			"hash":      code.Hash,
-			"owneruid":  code.OwnedUID,
+			"owneruid":  code.OwnerUID,
 			"problemid": code.ProblemID,
 			"status":    code.Status,
 		})
@@ -82,7 +81,7 @@ func (cr *CodeService) Get(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"code":      CodeOK,
 			"hash":      code.Hash,
-			"owneruid":  code.OwnedUID,
+			"owneruid":  code.OwnerUID,
 			"problemid": code.ProblemID,
 			"status":    code.Status,
 		})
@@ -107,27 +106,28 @@ func (cr *CodeService) GetContent(c *gin.Context) {
 	}
 	if code != nil {
 
-		f, err := os.Open(codepath + hex.EncodeToString(code.Hash) + "/main.cpp")
-		if err != nil {
-			c.AbortWithError(500, err)
-			return
-		}
-		b, err := ioutil.ReadAll(f)
-		f.Close()
-		if err != nil {
-			c.AbortWithError(500, err)
-			return
-		}
+		// f, err := os.Open()
+		// if err != nil {
+		// 	c.AbortWithError(500, err)
+		// 	return
+		// }
+		// b, err := ioutil.ReadAll(f)
+		// f.Close()
+		// if err != nil {
+		// 	c.AbortWithError(500, err)
+		// 	return
+		// }
 
-		c.JSON(http.StatusOK, gin.H{
-			"code": CodeOK,
-			"hash": code.Hash,
-			// todo: hack b to string
-			"content":   string(b),
-			"owneruid":  code.OwnedUID,
-			"problemid": code.ProblemID,
-			"status":    code.Status,
-		})
+		// c.JSON(http.StatusOK, gin.H{
+		// 	"code": CodeOK,
+		// 	"hash": code.Hash,
+		// 	// todo: hack b to string
+		// 	"content":   string(b),
+		// 	"owneruid":  code.OwnerUID,
+		// 	"problemid": code.ProblemID,
+		// 	"status":    code.Status,
+		// })
+		c.File(codepath + hex.EncodeToString(code.Hash) + "/main.cpp")
 	} else {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeNotFound,
@@ -190,7 +190,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 		})
 		return
 	}
-	code.OwnedUID = int(ownerUIDx)
+	code.OwnerUID = int(ownerUIDx)
 	// todo: find problemid
 
 	var body string
@@ -262,7 +262,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 			"code":      CodeOK,
 			"id":        code.ID,
 			"hash":      code.Hash,
-			"owneruid":  code.OwnedUID,
+			"owneruid":  code.OwnerUID,
 			"problemid": code.ProblemID,
 			"status":    code.Status,
 		})
