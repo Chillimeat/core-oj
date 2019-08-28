@@ -13,6 +13,7 @@ import (
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 
 	compiler "github.com/Myriad-Dreamin/core-oj/compiler"
+	judger "github.com/Myriad-Dreamin/core-oj/judger"
 
 	types "github.com/Myriad-Dreamin/core-oj/types"
 
@@ -21,26 +22,35 @@ import (
 
 // JudgeService defines handler functions of code router
 type JudgeService struct {
-	dae    *compiler.Daemon
+	cdae   *compiler.Daemon
+	jdae   *judger.Daemon
 	cr     *morm.Coder
+	pr     *morm.Problemer
 	logger log.TendermintLogger
 }
 
 // NewJudgeService return a pointer of JudgeService
-func NewJudgeService(coder *morm.Coder, logger log.TendermintLogger) (*JudgeService, error) {
+func NewJudgeService(coder *morm.Coder, problemer *morm.Problemer, logger log.TendermintLogger) (*JudgeService, error) {
 	cli, err := client.Connect("unix:///var/run/docker.sock", "v1.40")
 	if err != nil {
 		return nil, err
 	}
 
-	dae, err := compiler.NewDaemon(cli)
+	cdae, err := compiler.NewDaemon(cli)
+	if err != nil {
+		return nil, err
+	}
+
+	jdae, err := judger.NewDaemon(cli)
 	if err != nil {
 		return nil, err
 	}
 
 	return &JudgeService{
-		dae:    dae,
+		cdae:   cdae,
+		jdae:   jdae,
 		cr:     coder,
+		pr:     problemer,
 		logger: logger,
 	}, nil
 }
@@ -52,7 +62,7 @@ func (js *JudgeService) ProcessAllCodes(ctx context.Context) {
 		waitingCodes = js.cr.ExposeWaitingCodes()
 		runningCodes = js.cr.ExposeRunningCodes()
 	)
-	go js.dae.Run(ctx, func(worker *compiler.Compiler) {
+	go js.cdae.Run(ctx, func(worker *compiler.Compiler) {
 		var req *rpcx.CompileRequest
 		var code *morm.Code
 		for req == nil {

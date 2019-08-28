@@ -12,12 +12,10 @@ import (
 	btoml "github.com/BurntSushi/toml"
 	"github.com/pelletier/go-toml"
 	"gopkg.in/yaml.v2"
-
-	types "github.com/Myriad-Dreamin/core-oj/types"
 )
 
 func TestJSON(t *testing.T) {
-	var config types.ProblemConfig
+	var config ProblemConfig
 
 	f, err := os.Open("problem-config.example.json")
 	if err != nil {
@@ -40,7 +38,7 @@ func TestJSON(t *testing.T) {
 }
 
 func TestYAML(t *testing.T) {
-	var config types.ProblemConfig
+	var config ProblemConfig
 
 	f, err := os.Open("problem-config.example.yaml")
 	if err != nil {
@@ -63,7 +61,7 @@ func TestYAML(t *testing.T) {
 }
 
 func TestTOML(t *testing.T) {
-	var config types.ProblemConfig
+	var config ProblemConfig
 
 	f, err := os.Open("problem-config.example.toml")
 	if err != nil {
@@ -86,7 +84,7 @@ func TestTOML(t *testing.T) {
 }
 
 func TestBTOML(t *testing.T) {
-	var config types.ProblemConfig
+	var config ProblemConfig
 
 	f, err := os.Open("problem-config.example.toml")
 	if err != nil {
@@ -109,7 +107,7 @@ func TestBTOML(t *testing.T) {
 }
 
 func TestXML(t *testing.T) {
-	var config types.ProblemConfig
+	var config ProblemConfig
 
 	f, err := os.Open("problem-config.example.xml")
 	if err != nil {

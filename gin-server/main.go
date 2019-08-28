@@ -57,7 +57,7 @@ func (srv *Server) Serve(port string) error {
 		return err
 	}
 
-	judgeService, err := NewJudgeService(coder, srv.logger)
+	judgeService, err := NewJudgeService(coder, problemer, srv.logger)
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,7 @@ import (
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
 
 	types "github.com/Myriad-Dreamin/core-oj/types"
+	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -26,13 +27,6 @@ type Judger struct {
 const (
 	jtp = "/home/kamiyoru/data/judger_tools/socks/"
 )
-
-// func (js *Judger) Judge(testCase *TestCase) {
-// 	b, err := json.Marshal(testCase)
-// 	js.conn.Send(b)
-// 	b, err = js.conn.Receive()
-// 	fmt.Println(string(b), err)
-// }
 
 type SocketY struct {
 	*net.UnixConn
@@ -72,6 +66,14 @@ func (sy *SocketY) Send(b []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (js *Judger) Judge(problem *morm.Problem) {
+
+	// b, err := json.Marshal(testCase)
+	// js.conn.Send(b)
+	// b, err = js.conn.Receive()
+	// fmt.Println(string(b), err)
 }
 
 func StartJudger(containerInfo *dockertypes.Container, cli *client.Client, cconfig *types.JudgerConfig, config *client.ContainerConfig) (cp *Judger, err error) {

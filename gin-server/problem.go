@@ -3,8 +3,6 @@ package main
 import (
 	"archive/zip"
 	"encoding/json"
-	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,11 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pelletier/go-toml"
-	"gopkg.in/yaml.v2"
-
 	"github.com/Myriad-Dreamin/core-oj/log"
-	types "github.com/Myriad-Dreamin/core-oj/types"
+	problemconfig "github.com/Myriad-Dreamin/core-oj/problem-config"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 
 	"github.com/gin-gonic/gin"
@@ -268,95 +263,9 @@ func (pr *ProblemService) Read(c *gin.Context) {
 	c.File(problempath + c.Param("id") + path)
 }
 
-func Select(configpaths ...string) (string, error) {
-	if len(configpaths) == 0 {
-		return "", errors.New("nil config files")
-	}
-
-	for _, configpath := range configpaths {
-		if _, err := os.Stat(configpath); err == nil {
-			return configpath, nil
-		}
-	}
-
-	return "", errors.New("no such file in the root directory")
-}
-
-func Load(config *types.ProblemConfig, configpath string) error {
-	for _, configX := range []struct {
-		Type      string
-		Unmarshal func([]byte, interface{}) error
-	}{
-		{".json", json.Unmarshal}, {".yml", yaml.Unmarshal},
-		{".toml", toml.Unmarshal}, {".xml", xml.Unmarshal}} {
-		if _, err := os.Stat(configpath + configX.Type); err == nil {
-			f, err := os.Open(configpath + configX.Type)
-			if err != nil {
-				return err
-			}
-
-			b, err := ioutil.ReadAll(f)
-			f.Close()
-			if err != nil {
-				return err
-			}
-			err = configX.Unmarshal(b, config)
-			if err != nil {
-				return err
-			}
-			config.LoadType = configX.Type
-			return nil
-		}
-	}
-
-	return errors.New("no such file in the root directory")
-}
-
-func Save(config *types.ProblemConfig, configpath string) error {
-	var b []byte
-	var err error
-	switch config.LoadType {
-	case ".json":
-		b, err = json.Marshal(config)
-		if err != nil {
-			return err
-		}
-	case ".yml":
-		b, err = yaml.Marshal(config)
-		if err != nil {
-			return err
-		}
-	case ".toml":
-		b, err = toml.Marshal(config)
-		if err != nil {
-			return err
-		}
-	case ".xml":
-		b, err = xml.Marshal(config)
-		if err != nil {
-			return err
-		}
-	}
-	if _, err := os.Stat(configpath + config.LoadType); err == nil {
-		f, err := os.OpenFile(configpath+config.LoadType, os.O_WRONLY|os.O_TRUNC, 0333)
-		if err != nil {
-			return err
-		}
-
-		_, err = f.Write(b)
-		f.Close()
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	return errors.New("no such file in the root directory")
-}
-
 func (pr *ProblemService) ReadConfig(c *gin.Context) {
 	path := problempath + c.Param("id") + "/problem-config"
-	configPath, err := Select(path+".json", path+".yml", path+".toml", path+".xml")
+	configPath, err := problemconfig.Select(path+".json", path+".yml", path+".toml", path+".xml")
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeFSExecError,
@@ -369,8 +278,8 @@ func (pr *ProblemService) ReadConfig(c *gin.Context) {
 
 func (pr *ProblemService) ReadConfigV2(c *gin.Context) {
 	path := problempath + c.Param("id") + "/problem-config"
-	var config types.ProblemConfig
-	err := Load(&config, path)
+	var config problemconfig.ProblemConfig
+	err := problemconfig.Load(&config, path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeFSExecError,
@@ -386,8 +295,8 @@ func (pr *ProblemService) ReadConfigV2(c *gin.Context) {
 
 func (pr *ProblemService) PutConfig(c *gin.Context) {
 	path := problempath + c.Param("id") + "/problem-config"
-	var config = new(types.ProblemConfig)
-	err := Load(config, path)
+	var config = new(problemconfig.ProblemConfig)
+	err := problemconfig.Load(config, path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeFSExecError,
@@ -417,7 +326,7 @@ func (pr *ProblemService) PutConfig(c *gin.Context) {
 		})
 		return
 	}
-	err = Save(config, path)
+	err = problemconfig.Save(config, path)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeFSExecError,

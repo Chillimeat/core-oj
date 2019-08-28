@@ -1,4 +1,4 @@
-package types
+package config
 
 import (
 	"encoding/json"
@@ -9,8 +9,12 @@ import (
 	"time"
 )
 
+
+type kiloByte = int
+
 type TaskConfig struct {
 	Name        string        `json:"name" yaml:"name" toml:"name" xml:"name"`
+	CaseCount   int           `json:"case-count" yaml:"case-count" toml:"case-count" xml:"case-count"`
 	TimeLimit   time.Duration `json:"time-limit" yaml:"time-limit" toml:"time-limit" xml:"time-limit"`
 	MemoryLimit kiloByte      `json:"memory-limit" yaml:"memory-limit" toml:"memory-limit" xml:"memory-limit"`
 	InputPath   string        `json:"input-path" yaml:"input-path" toml:"input-path" xml:"input-path"`
