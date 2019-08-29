@@ -2,7 +2,6 @@ package profiler
 
 import (
 	"context"
-	"errors"
 	"io"
 	"os/exec"
 	"syscall"
@@ -34,9 +33,9 @@ func uitoa(val uint) string {
 const BSDMaxrss = 1024
 
 // Profile execute a command and profile it
-func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types.ProcState {
-	ctx, cancel := context.WithTimeout(context.Background(), testCase.TimeLimit)
-	cmd := exec.CommandContext(ctx, testCase.TestPath)
+func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, output io.Writer) *types.ProcState {
+	sctx, cancel := context.WithTimeout(ctx, testCase.TimeLimit)
+	cmd := exec.CommandContext(sctx, testCase.TestPath)
 	cmd.Stdout = output
 	cmd.Stdin = input
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
@@ -51,8 +50,8 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 			switch {
 			case status.Exited():
 				return &types.ProcState{
-					status.ExitStatus(),
-					types.RuntimeError{ProcErr: errors.New("exit status " + itoa(status.ExitStatus()))},
+					int64(status.ExitStatus()),
+					types.RuntimeError{ProcErr: "exit status " + itoa(status.ExitStatus())},
 					time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 				}
 			case status.Signaled():
@@ -65,19 +64,19 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 			case status.Continued():
 				res = "continued"
 			}
-			err = nil
+
+			return &types.ProcState{
+				int64(cmd.ProcessState.ExitCode()),
+				types.TimeLimitExceed{ProcErr: res},
+				time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
+			}
 		}
 
 		return &types.ProcState{
-			cmd.ProcessState.ExitCode(),
-			types.JudgeError{ProcErr: err},
+			int64(23333),
+			types.JudgeError{ProcErr: err.Error()},
 			0, 0,
 		}
-		// return &types.ProcState{
-		// 	cmd.ProcessState.ExitCode(),
-		// 	types.TimeLimitExceed{ProcErr: err},
-		// 	(time.Millisecond * time.Duration(rusage.Utime.Usec/1000+rusage.Utime.Sec*1000+rusage.Stime.Usec/1000+rusage.Stime.Sec*1000)), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
-		// }
 	}
 	cancel()
 
@@ -86,7 +85,7 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 
 	if timeUsed > testCase.TimeLimit {
 		return &types.ProcState{
-			cmd.ProcessState.ExitCode(), types.TimeLimitExceed{ProcErr: errors.New("Time limit exceed")},
+			int64(cmd.ProcessState.ExitCode()), types.TimeLimitExceed{ProcErr: "Time limit exceed"},
 			timeUsed,
 			float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 		}
@@ -95,14 +94,14 @@ func Profile(testCase *types.TestCase, input io.Reader, output io.Writer) *types
 	var MemoryUsed = float64(rusage.Maxrss*BSDMaxrss) / 1024.0
 	if MemoryUsed > float64(testCase.MemoryLimit) {
 		return &types.ProcState{
-			cmd.ProcessState.ExitCode(), types.MemoryLimitExceed{ProcErr: errors.New("Memory limit exceed")},
+			int64(cmd.ProcessState.ExitCode()), types.MemoryLimitExceed{ProcErr: "Memory limit exceed"},
 			timeUsed,
 			float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 		}
 	}
 
 	return &types.ProcState{
-		cmd.ProcessState.ExitCode(), nil,
+		int64(cmd.ProcessState.ExitCode()), nil,
 		timeUsed,
 		float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 	}

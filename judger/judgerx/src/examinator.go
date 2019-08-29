@@ -3,7 +3,6 @@ package profiler
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,30 +19,30 @@ func MakeInput(t *types.TestCase) (io.ReadCloser, error) {
 	return os.Open(t.InputPath)
 }
 
-func Check(t *types.TestCase, output io.Reader) types.CodeError {
+func Check(ctx context.Context, t *types.TestCase, output io.Reader) types.CodeError {
 	if _, err := os.Stat(t.StdOutputPath); err != nil {
-		return types.SystemError{ProcErr: err}
+		return types.SystemError{ProcErr: err.Error()}
 	}
 	if t.SpecialJudge {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		cmd := exec.CommandContext(ctx, t.StdOutputPath)
+		sctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		cmd := exec.CommandContext(sctx, t.StdOutputPath)
 		var jerrput = new(bytes.Buffer)
 		cmd.Stdout = jerrput
 		cmd.Stdin = output
 		if err := cmd.Run(); err != nil {
 			cancel()
-			return types.JudgeError{ProcErr: err}
+			return types.JudgeError{ProcErr: err.Error()}
 		}
 		cancel()
-		var testStatus int
+		var testStatus int64
 		fmt.Fscanf(jerrput, "%d", &testStatus)
 		if testStatus != 0 {
 			return types.ConstructCodeError(testStatus)(bytes.TrimSpace(jerrput.Bytes()))
 		}
-		return types.JudgeError{ProcErr: errors.New("not read test status")}
+		return types.JudgeError{ProcErr: "not read test status"}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	cmd := exec.CommandContext(ctx, "/judger_tools/sos-checker", "presu.txt", "stdin", t.StdOutputPath)
+	sctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	cmd := exec.CommandContext(sctx, "/judger_tools/sos-checker", "presu.txt", "stdin", t.StdOutputPath)
 	var jerrout = new(bytes.Buffer)
 	cmd.Stderr = jerrout
 	cmd.Stdin = output

@@ -2,14 +2,36 @@ package types
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/gob"
 	"strconv"
 )
 
 type CodeError interface {
 	error
 	JudgeError() []byte
-	ErrorCode() int
+	ErrorCode() int64
+}
+
+type BaseCodeError struct {
+	Err  string `json:"er"`
+	Code int64  `json:"ec"`
+	JErr string `json:"je"`
+}
+
+func (err BaseCodeError) Error() string {
+	return err.Err
+}
+
+func (err BaseCodeError) ErrorCode() int64 {
+	return err.Code
+}
+
+func (err BaseCodeError) JudgeError() []byte {
+	return []byte(err.JErr)
+}
+
+func AcceptedBaseCodeError() CodeError {
+	return &BaseCodeError{Code: StatusAccepted}
 }
 
 func marshalCodeError(c CodeError) []byte {
@@ -25,18 +47,18 @@ func marshalCodeError(c CodeError) []byte {
 		buf.Write(b)
 	}
 	buf.WriteString(`","ec":`)
-	buf.WriteString(strconv.Itoa(c.ErrorCode()))
+	buf.WriteString(strconv.FormatInt(c.ErrorCode(), 10))
 
 	buf.WriteByte('}')
 
-	fmt.Println(buf.String(), len(buf.String()), buf.Len())
+	// fmt.Println(buf.String(), len(buf.String()), buf.Len())
 
 	return buf.Bytes()
 }
 
 type CompileError struct {
 	Info    []byte
-	ProcErr error
+	ProcErr string
 }
 
 func (err CompileError) MarshalJSON() (b []byte, errr error) {
@@ -45,19 +67,19 @@ func (err CompileError) MarshalJSON() (b []byte, errr error) {
 }
 
 func (err CompileError) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 func (err CompileError) JudgeError() []byte {
 	return err.Info
 }
 
-func (err CompileError) ErrorCode() int {
+func (err CompileError) ErrorCode() int64 {
 	return StatusCompileError
 }
 
 type TimeLimitExceed struct {
-	ProcErr error
+	ProcErr string
 }
 
 func (err TimeLimitExceed) MarshalJSON() (b []byte, errr error) {
@@ -66,7 +88,7 @@ func (err TimeLimitExceed) MarshalJSON() (b []byte, errr error) {
 }
 
 func (err TimeLimitExceed) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 var tle = []byte("Time limit exceed")
@@ -75,12 +97,12 @@ func (err TimeLimitExceed) JudgeError() []byte {
 	return tle
 }
 
-func (err TimeLimitExceed) ErrorCode() int {
+func (err TimeLimitExceed) ErrorCode() int64 {
 	return StatusTimeLimitExceed
 }
 
 type MemoryLimitExceed struct {
-	ProcErr error
+	ProcErr string
 }
 
 func (err MemoryLimitExceed) MarshalJSON() (b []byte, errr error) {
@@ -89,7 +111,7 @@ func (err MemoryLimitExceed) MarshalJSON() (b []byte, errr error) {
 }
 
 func (err MemoryLimitExceed) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 var mle = []byte("Memory limit exceed")
@@ -98,12 +120,12 @@ func (err MemoryLimitExceed) JudgeError() []byte {
 	return mle
 }
 
-func (err MemoryLimitExceed) ErrorCode() int {
+func (err MemoryLimitExceed) ErrorCode() int64 {
 	return StatusMemoryLimitExceed
 }
 
 type RuntimeError struct {
-	ProcErr error
+	ProcErr string
 }
 
 func (err RuntimeError) MarshalJSON() (b []byte, errr error) {
@@ -112,7 +134,7 @@ func (err RuntimeError) MarshalJSON() (b []byte, errr error) {
 }
 
 func (err RuntimeError) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 var re = []byte("Runtime error")
@@ -121,12 +143,12 @@ func (err RuntimeError) JudgeError() []byte {
 	return re
 }
 
-func (err RuntimeError) ErrorCode() int {
+func (err RuntimeError) ErrorCode() int64 {
 	return StatusRuntimeError
 }
 
 type JudgeError struct {
-	ProcErr error
+	ProcErr string
 }
 
 func (err JudgeError) MarshalJSON() (b []byte, errr error) {
@@ -135,7 +157,7 @@ func (err JudgeError) MarshalJSON() (b []byte, errr error) {
 }
 
 func (err JudgeError) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 var je = []byte("Judge error")
@@ -144,13 +166,13 @@ func (err JudgeError) JudgeError() []byte {
 	return je
 }
 
-func (err JudgeError) ErrorCode() int {
+func (err JudgeError) ErrorCode() int64 {
 	return StatusJudgeError
 }
 
 type PresentationError struct {
 	Info    []byte
-	ProcErr error
+	ProcErr string
 }
 
 func (err PresentationError) MarshalJSON() (b []byte, errr error) {
@@ -159,98 +181,98 @@ func (err PresentationError) MarshalJSON() (b []byte, errr error) {
 }
 
 func (err PresentationError) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 func (err PresentationError) JudgeError() []byte {
 	return err.Info
 }
 
-func (err PresentationError) ErrorCode() int {
+func (err PresentationError) ErrorCode() int64 {
 	return StatusPresentationError
 }
 
 type WrongAnswer struct {
 	Info    []byte
-	ProcErr error
+	ProcErr string
 }
 
 func (err WrongAnswer) MarshalJSON() (b []byte, errr error) {
 	b = marshalCodeError(err)
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 	return
 }
 
 func (err WrongAnswer) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 func (err WrongAnswer) JudgeError() []byte {
 	return err.Info
 }
 
-func (err WrongAnswer) ErrorCode() int {
+func (err WrongAnswer) ErrorCode() int64 {
 	return StatusWrongAnswer
 }
 
 type UnknownError struct {
 	Info    []byte
-	ProcErr error
+	ProcErr string
 }
 
 func (err UnknownError) MarshalJSON() (b []byte, errr error) {
 	b = marshalCodeError(err)
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 	return
 }
 
 func (err UnknownError) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 func (err UnknownError) JudgeError() []byte {
 	return err.Info
 }
 
-func (err UnknownError) ErrorCode() int {
+func (err UnknownError) ErrorCode() int64 {
 	return StatusUnknownError
 }
 
 type OutputLimitExceed struct {
 	Info    []byte
-	ProcErr error
+	ProcErr string
 }
 
 func (err OutputLimitExceed) MarshalJSON() (b []byte, errr error) {
 	b = marshalCodeError(err)
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 	return
 }
 
 func (err OutputLimitExceed) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 func (err OutputLimitExceed) JudgeError() []byte {
 	return err.Info
 }
 
-func (err OutputLimitExceed) ErrorCode() int {
+func (err OutputLimitExceed) ErrorCode() int64 {
 	return StatusOutputLimitExceed
 }
 
 type ExhaustedMatch struct {
-	ProcErr error
+	ProcErr string
 }
 
 func (err ExhaustedMatch) MarshalJSON() (b []byte, errr error) {
 	b = marshalCodeError(err)
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 	return
 }
 
 func (err ExhaustedMatch) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 var em = []byte("Exhausted match of testlib")
@@ -259,21 +281,21 @@ func (err ExhaustedMatch) JudgeError() []byte {
 	return em
 }
 
-func (err ExhaustedMatch) ErrorCode() int {
+func (err ExhaustedMatch) ErrorCode() int64 {
 	return StatusExhaustedMatch
 }
 
 type SystemError struct {
-	ProcErr error
+	ProcErr string
 }
 
 func (err SystemError) Error() string {
-	return err.ProcErr.Error()
+	return err.ProcErr
 }
 
 func (err SystemError) MarshalJSON() (b []byte, errr error) {
 	b = marshalCodeError(err)
-	fmt.Println(string(b))
+	// fmt.Println(string(b))
 	return
 }
 
@@ -283,6 +305,19 @@ func (err SystemError) JudgeError() []byte {
 	return se
 }
 
-func (err SystemError) ErrorCode() int {
+func (err SystemError) ErrorCode() int64 {
 	return StatusSystemError
+}
+
+func init() {
+	gob.Register(BaseCodeError{})
+	gob.Register(CompileError{})
+	gob.Register(TimeLimitExceed{})
+	gob.Register(WrongAnswer{})
+	gob.Register(MemoryLimitExceed{})
+	gob.Register(SystemError{})
+	gob.Register(OutputLimitExceed{})
+	gob.Register(PresentationError{})
+	gob.Register(RuntimeError{})
+	gob.Register(UnknownError{})
 }

@@ -3,15 +3,14 @@ package types
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 )
 
 const (
-	StatusWaitingForJudge int = iota
-	StatusAccepted
+	StatusAccepted int64 = iota
+	StatusWaitingForJudge
 	StatusRunning
 	StatusCompiling
 	StatusCompileError
@@ -32,7 +31,7 @@ const (
 type StatusConstructor func(Info []byte) CodeError
 
 // ConstructCodeError return a constrcutor to generate code error
-func ConstructCodeError(status int) StatusConstructor {
+func ConstructCodeError(status int64) StatusConstructor {
 	switch status {
 	case StatusAccepted:
 		return func([]byte) CodeError {
@@ -40,31 +39,31 @@ func ConstructCodeError(status int) StatusConstructor {
 		}
 	case StatusWrongAnswer:
 		return func(info []byte) CodeError {
-			return &WrongAnswer{Info: info, ProcErr: errors.New("Wrong answer")}
+			return &WrongAnswer{Info: info, ProcErr: "Wrong answer"}
 		}
 	case StatusUnknownError:
 		return func(info []byte) CodeError {
-			return &UnknownError{Info: info, ProcErr: errors.New("Unknown error")}
+			return &UnknownError{Info: info, ProcErr: "Unknown error"}
 		}
 	case StatusPresentationError:
 		return func(info []byte) CodeError {
-			return &PresentationError{Info: info, ProcErr: errors.New("Presentation error")}
+			return &PresentationError{Info: info, ProcErr: "Presentation error"}
 		}
 	case StatusOutputLimitExceed:
 		return func(info []byte) CodeError {
-			return &OutputLimitExceed{Info: info, ProcErr: errors.New("Output limit exceed")}
+			return &OutputLimitExceed{Info: info, ProcErr: "Output limit exceed"}
 		}
 	case StatusJudgeError:
 		return func([]byte) CodeError {
-			return &JudgeError{ProcErr: errors.New("Judge error")}
+			return &JudgeError{ProcErr: "Judge error"}
 		}
 	case StatusSystemError:
 		return func(info []byte) CodeError {
-			return &SystemError{ProcErr: errors.New(string(info))}
+			return &SystemError{ProcErr: string(info)}
 		}
 	default:
 		return func([]byte) CodeError {
-			return &JudgeError{fmt.Errorf("Unknown status of special judge? %v", status)}
+			return &JudgeError{fmt.Sprintf("Unknown status of special judge? %v", status)}
 		}
 	}
 }
@@ -98,7 +97,7 @@ var (
 	partiallyHash  = calc("partially ")
 )
 
-func matchStatus(buf *bufio.Reader) int {
+func matchStatus(buf *bufio.Reader) int64 {
 	var outVal int
 	var aut = 0
 	for {

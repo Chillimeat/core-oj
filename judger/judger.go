@@ -4,12 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"strconv"
+	"time"
 
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
 
+	config "github.com/Myriad-Dreamin/core-oj/config"
+	problemconfig "github.com/Myriad-Dreamin/core-oj/problem-config"
 	types "github.com/Myriad-Dreamin/core-oj/types"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 
@@ -30,17 +37,25 @@ const (
 
 type SocketY struct {
 	*net.UnixConn
+	addr       *net.UnixAddr
+	lastDial   time.Time
 	lenBuffer  int32
 	buffer     []byte
 	precBuffer *bytes.Buffer
 	suffBuffer *bytes.Buffer
 }
 
-func NewSocketY(conn *net.UnixConn) (sy *SocketY) {
+func NewSocketY(addr *net.UnixAddr) (sy *SocketY, err error) {
 	sy = new(SocketY)
-	sy.UnixConn = conn
+	sy.addr = addr
 	sy.buffer = make([]byte, 3333)
 	sy.precBuffer, sy.suffBuffer = bytes.NewBuffer(sy.buffer[0:4]), bytes.NewBuffer(sy.buffer[4:])
+
+	sy.UnixConn, err = net.DialUnix("unix", nil, addr)
+	if err != nil {
+		return nil, err
+	}
+	sy.lastDial = time.Now()
 	return
 }
 
@@ -53,22 +68,132 @@ func (sy *SocketY) Receive() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	sy.lastDial = time.Now()
 	return sy.buffer[0:sy.lenBuffer], nil
 }
 
-func (sy *SocketY) Send(b []byte) error {
+func (sy *SocketY) Send(b []byte) (err error) {
+	if time.Now().Sub(sy.lastDial) > 400*time.Millisecond {
+		fmt.Println("here")
+		sy.UnixConn, err = net.DialUnix("unix", nil, sy.addr)
+		if err != nil {
+			return err
+		}
+	}
 	sy.precBuffer.Reset()
 	sy.suffBuffer.Reset()
 	binary.Write(sy.precBuffer, binary.BigEndian, int32(len(b)))
 	binary.Write(sy.suffBuffer, binary.BigEndian, b)
-	_, err := sy.UnixConn.Write(sy.buffer[0 : 4+len(b)])
+	_, err = sy.UnixConn.Write(sy.buffer[0 : 4+len(b)])
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (js *Judger) Judge(problem *morm.Problem) {
+func calcuateSPJ(lt, fp string) string {
+	return "todo"
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxTime(a, b time.Duration) time.Duration {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxFloat64(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*types.ProcState, error) {
+	var path = config.Config().ProblemPath + strconv.Itoa(problem.ID)
+	var inpath = "/problems/" + strconv.Itoa(problem.ID)
+	var outpath = inpath
+	var cfg = new(problemconfig.ProblemConfig)
+
+	err := problemconfig.Load(cfg, path+"/problem-config")
+
+	if err != nil {
+		return nil, err
+	}
+
+	var testCase = new(types.TestCase)
+	testCase.TestPath = "/codes" + hex.EncodeToString(code.Hash) + "/main"
+
+	testCase.OptionStream = 0
+	if cfg.SpecialJudgeConfig.SpecialJudge {
+		testCase.SpecialJudge = true
+		testCase.SpecialJudgePath = calcuateSPJ(
+			cfg.SpecialJudgeConfig.LanguageType,
+			cfg.SpecialJudgeConfig.FilePath,
+		)
+	}
+
+	switch cfg.JudgeConfig.Type {
+	case "acm":
+		if len(cfg.JudgeConfig.Tasks) != 1 {
+			return nil, errors.New("problem cfg error?(judge-config.tasks")
+		}
+		var retstat = make([]*types.ProcState, 0, len(cfg.JudgeConfig.Tasks))
+		var task = cfg.JudgeConfig.Tasks[0]
+		var intaskpath = inpath + task.InputPath + "in"
+		var outtaskPath = outpath + task.OutputPath + "out"
+		testCase.TimeLimit = task.TimeLimit
+		testCase.MemoryLimit = task.MemoryLimit
+		var totstat = new(types.ProcState)
+		for testCase.CaseNumber = 1; testCase.CaseNumber <= task.CaseCount; testCase.CaseNumber++ {
+			testCase.InputPath = intaskpath + strconv.Itoa(testCase.CaseNumber) + ".txt"
+			testCase.StdOutputPath = outtaskPath + strconv.Itoa(testCase.CaseNumber) + ".txt"
+
+			b, err := json.MarshalIndent(testCase, "", "    ")
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println(string(b))
+
+			b, err = json.Marshal(testCase)
+			if err != nil {
+				return nil, err
+			}
+			err = js.conn.Send(b)
+			if err != nil {
+				return nil, err
+			}
+			b, err = js.conn.Receive()
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println(string(b), err)
+
+			var stat types.ProcState
+			err = json.Unmarshal(b, &stat)
+			if err != nil {
+				return nil, err
+			}
+			totstat.CodeError = stat.CodeError
+			totstat.TimeUsed = maxTime(totstat.TimeUsed, stat.TimeUsed)
+			totstat.MemoryUsed = maxFloat64(totstat.MemoryUsed, stat.MemoryUsed)
+
+			if totstat.CodeError.ErrorCode() != types.StatusAccepted {
+				return append(retstat, totstat), nil
+			}
+		}
+		return append(retstat, totstat), nil
+	default:
+		return nil, errors.New("problem config error?(judge-config.judge-type")
+	}
 
 	// b, err := json.Marshal(testCase)
 	// js.conn.Send(b)
@@ -94,11 +219,10 @@ func StartJudger(containerInfo *dockertypes.Container, cli *client.Client, cconf
 		return nil, err
 	}
 
-	conn, err := net.DialUnix("unix", nil, uaddr)
+	cp.conn, err = NewSocketY(uaddr)
 	if err != nil {
 		return nil, err
 	}
-	cp.conn = NewSocketY(conn)
 	return
 }
 

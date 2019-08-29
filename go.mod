@@ -6,6 +6,7 @@ replace github.com/ugorji/go v1.1.4 => github.com/ugorji/go/codec v0.0.0-2019020
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/buger/jsonparser v0.0.0-20181115193947-bf1c66bbce23
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v1.13.1
 	github.com/docker/go-connections v0.4.0
@@ -17,9 +18,11 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/gookit/color v1.1.10
 	github.com/jinzhu/configor v1.1.1
+	github.com/json-iterator/go v1.1.6
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/pelletier/go-toml v1.2.0
 	github.com/spf13/cobra v0.0.5 // indirect
+	github.com/syndtr/goleveldb v1.0.1-0.20190318030020-c3a204f8e965
 	github.com/tendermint/tendermint v0.32.2
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

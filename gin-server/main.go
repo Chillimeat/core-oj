@@ -4,17 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	config "github.com/Myriad-Dreamin/core-oj/config"
 	"github.com/Myriad-Dreamin/core-oj/log"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/go-xorm/xorm"
 )
-
-const DriverName = "mysql"
-const MasterDataSourceName = "coreoj-admin:123456@tcp(127.0.0.1:3306)/coreoj?charset=utf8"
-const codepath = "/home/kamiyoru/data/test/"
-const problempath = "/home/kamiyoru/data/problems/"
 
 type Server struct {
 	engine *xorm.Engine
@@ -117,7 +113,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	err = srv.prepareDatabase(DriverName, MasterDataSourceName)
+	err = srv.prepareDatabase(config.Config().DriverName, config.Config().MasterDataSourceName)
 	if err != nil {
 		fmt.Println(err)
 		return

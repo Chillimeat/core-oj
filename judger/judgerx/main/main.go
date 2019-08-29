@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"flag"
@@ -9,13 +10,15 @@ import (
 	"io"
 	"net"
 	"os"
+	"time"
 
 	profiler "github.com/Myriad-Dreamin/core-oj/judger/judgerx/src"
 	types "github.com/Myriad-Dreamin/core-oj/types"
 )
 
 var (
-	unixAddress = flag.String("addr", "/var/run/judger-test.sock", "ipc server address")
+	unixAddress   = flag.String("addr", "/var/run/judger-test.sock", "ipc server address")
+	eachCaseDelay = 500 * time.Millisecond
 )
 
 var lenBuffer int32
@@ -23,7 +26,7 @@ var buffer = make([]byte, 1024*128)
 var precBody, suffBody = buffer[0:4], buffer[4:]
 var precBuffer, suffBuffer = bytes.NewBuffer(precBody), bytes.NewBuffer(suffBody)
 
-func serve(conn *net.UnixConn) {
+func serve(ctx context.Context, conn *net.UnixConn) {
 	defer conn.Close()
 
 	var receive = func() []byte {
@@ -52,51 +55,63 @@ func serve(conn *net.UnixConn) {
 		return
 	}
 
-	b := receive()
-	if b == nil {
-		return
-	}
+	for {
+		conn.SetDeadline(time.Now().Add(eachCaseDelay))
+		b := receive()
+		if b == nil {
+			return
+		}
 
-	var testCase = new(types.TestCase)
+		var testCase = new(types.TestCase)
 
-	err := json.Unmarshal(buffer[0:lenBuffer], testCase)
-	if err != nil {
-		b, err := json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err}, 0, 0})
+		err := json.Unmarshal(buffer[0:lenBuffer], testCase)
 		if err != nil {
-			panic(err)
+			b, err := json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err.Error()}, 0, 0})
+			if err != nil {
+				panic(err)
+			}
+			send(b)
+			return
 		}
-		send(b)
-		return
-	}
 
-	// b, err := json.Marshal(testCase)
-	// fmt.Println(string(s)tring(b), err)
+		// b, err := json.Marshal(testCase)
+		// fmt.Println(string(s)tring(b), err)
 
-	input, err := profiler.MakeInput(testCase)
-	if err != nil {
-		b, err = json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err}, 0, 0})
+		input, err := profiler.MakeInput(testCase)
 		if err != nil {
-			panic(err)
-		}
-		send(b)
-		return
-	}
-	var output = new(bytes.Buffer)
-
-	procInfo := profiler.Profile(testCase, input, output)
-	input.Close()
-
-	if procInfo != nil {
-
-		if procInfo.CodeError == nil {
-			procInfo.CodeError = profiler.Check(testCase, output)
+			b, err = json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err.Error()}, 0, 0})
+			if err != nil {
+				panic(err)
+			}
+			send(b)
+			return
 		}
 
-		b, err = json.Marshal(procInfo)
-		if err != nil {
-			panic(err)
+		conn.SetDeadline(time.Now().Add(testCase.TimeLimit + eachCaseDelay))
+		sctx, cancel := context.WithDeadline(ctx, time.Now().Add(testCase.TimeLimit+eachCaseDelay))
+		var output = new(bytes.Buffer)
+
+		procInfo := profiler.Profile(sctx, testCase, input, output)
+		cancel()
+		input.Close()
+
+		// todo spj time limit
+		conn.SetDeadline(time.Now().Add(testCase.TimeLimit + eachCaseDelay))
+		sctx, cancel = context.WithDeadline(ctx, time.Now().Add(testCase.TimeLimit+eachCaseDelay))
+		if procInfo != nil {
+
+			if procInfo.CodeError == nil {
+				procInfo.CodeError = profiler.Check(sctx, testCase, output)
+			}
+			cancel()
+			b, err = json.Marshal(procInfo)
+			if err != nil {
+				panic(err)
+			}
+			send(b)
+		} else {
+			panic("empty procInfo")
 		}
-		send(b)
 	}
 }
 
@@ -135,7 +150,7 @@ func main() {
 			fmt.Println(err)
 			continue
 		}
-		serve(conn)
+		serve(context.Background(), conn)
 	}
 }
 

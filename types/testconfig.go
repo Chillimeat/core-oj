@@ -24,5 +24,6 @@ type TestCase struct {
 
 	MemoryLimit kiloByte `json:"ml"`
 
-	SpecialJudge bool `json:"spj"`
+	SpecialJudge     bool   `json:"spj"`
+	SpecialJudgePath string `json:"spjp"`
 }

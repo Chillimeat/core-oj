@@ -1,4 +1,4 @@
-package types
+package korm
 
 import (
 	"encoding/json"
@@ -6,13 +6,14 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/Myriad-Dreamin/core-oj/types"
 	"github.com/buger/jsonparser"
 )
 
 // ProcState record the cost of process
 type ProcState struct {
 	Status    int64
-	CodeError CodeError
+	CodeError types.CodeError
 	TimeUsed  time.Duration
 
 	// in kilobytes
@@ -30,7 +31,7 @@ func stringToBytes(s string) []byte {
 }
 
 func (g *ProcState) UnmarshalJSON(b []byte) (err error) {
-	g.CodeError = AcceptedBaseCodeError()
+	g.CodeError = types.AcceptedBaseCodeError()
 	c, err := jsonparser.GetUnsafeString(b, "CodeError")
 	if err != nil {
 		return
@@ -53,4 +54,35 @@ func (g *ProcState) UnmarshalJSON(b []byte) (err error) {
 		return
 	}
 	return nil
+}
+
+type ProcStater struct {
+	db KVDB
+}
+
+var procStateSlot = []byte("procstate")
+
+func NewProcStater(db KVDB) (*ProcStater, error) {
+	db, err := db.Table(procStateSlot)
+	if err != nil {
+		return nil, err
+	}
+	return &ProcStater{db}, nil
+}
+
+func (objx *ProcStater) Query(id int) ([]ProcState, error) {
+	var procStates []ProcState
+	err := objx.db.IDThen(id).Extract(&procStates)
+	if err != nil {
+		return nil, err
+	}
+	return procStates, nil
+}
+
+func (objx *ProcStater) Insert(id int, obj []ProcState) error {
+	return objx.db.IDThen(id).Push(obj)
+}
+
+func (objx *ProcStater) Delete(id int) error {
+	return objx.db.IDThen(id).Clear()
 }

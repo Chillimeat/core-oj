@@ -4,7 +4,6 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 
 	types "github.com/Myriad-Dreamin/core-oj/types"
 	"github.com/go-xorm/xorm"
@@ -26,7 +25,7 @@ type Code struct {
 	OwnerUID  int    `xorm:"'owner_uid'"`
 	ProblemID int    `xorm:"'problem_id'"`
 	// Warning: unsafeConvert Exists
-	Status int `xorm:"'status'"`
+	Status int64 `xorm:"'status'"`
 }
 
 type CodeSlice []Code
@@ -230,7 +229,7 @@ func (objx *Coder) QueryHash(property []byte) (*Code, error) {
 	has, err := x.Get(obj)
 	if has {
 		if obk, ok := objx.aliveCodes[obj.ID]; ok {
-			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+			obj.Status = atomic.LoadInt64(&obk.Status)
 		}
 		return obj, nil
 	}
@@ -244,7 +243,7 @@ func (objx *Coder) QueryOwnerUID(property int) (*Code, error) {
 	has, err := x.Get(obj)
 	if has {
 		if obk, ok := objx.aliveCodes[obj.ID]; ok {
-			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+			obj.Status = atomic.LoadInt64(&obk.Status)
 		}
 		return obj, nil
 	}
@@ -258,7 +257,7 @@ func (objx *Coder) QueryProblemID(property int) (*Code, error) {
 	has, err := x.Get(obj)
 	if has {
 		if obk, ok := objx.aliveCodes[obj.ID]; ok {
-			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+			obj.Status = atomic.LoadInt64(&obk.Status)
 		}
 		return obj, nil
 	}
@@ -272,7 +271,7 @@ func (objx *Coder) QueryProblemID(property int) (*Code, error) {
 // 	has, err := x.Get(obj)
 // 	if has {
 // 		if obk, ok := objx.aliveCodes[obj.ID]; ok {
-// 			obj.Status = (int)(atomic.LoadInt64((*int64)(unsafe.Pointer(&obk.Status))))
+// 			obj.Status = atomic.LoadInt64(&obk.Status)
 // 		}
 // 		return obj, nil
 // 	}

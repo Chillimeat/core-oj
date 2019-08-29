@@ -27,7 +27,7 @@ func TestBuildAndStartJudger(t *testing.T) {
 		return
 	}
 
-	js.conn.Send([]byte(`{"cn":1,"tp":"/codes/main","ops":0,"inp":"/problems/1001/in.txt","soup":"/problems/1001/ans.txt","tl":2001000000,"ml":262144,"spj":false}`))
+	js.conn.Send([]byte(`{"cn":1,"tp":"/codes/main","ops":0,"inp":"/problems/1/codes/in1.txt","soup":"/problems/1/codes/out1.txt","tl":2001000000,"ml":262144,"spj":false}`))
 	b, err := js.conn.Receive()
 	fmt.Println(string(b), err)
 }
