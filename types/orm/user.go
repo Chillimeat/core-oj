@@ -44,6 +44,11 @@ func (obj *User) Update() (int64, error) {
 	return x.ID(obj.ID).Update(obj)
 }
 
+// UpdateAll to Engine
+func (obj *User) UpdateAll() (int64, error) {
+	return x.ID(obj.ID).AllCols().Update(obj)
+}
+
 // Query from Engine
 func (obj *User) Query() (bool, error) {
 	return x.Get(obj)
@@ -85,12 +90,12 @@ func (objx *Userer) Inserts(objs []User) (int64, error) {
 
 // Querys with conditions
 func (objx *Userer) Querys(objs []User, conds ...interface{}) error {
-	return x.Find(objs, conds...)
+	return x.Find(&objs, conds...)
 }
 
 // ColsQuerys with conditions with specifying columns
 func (objx *Userer) ColsQuerys(objs []User, cols ...string) error {
-	return x.Cols(cols...).Find(objs)
+	return x.Cols(cols...).Find(&objs)
 }
 
 // Where provIDes custom query condition.

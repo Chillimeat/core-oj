@@ -1,7 +1,10 @@
 package compiler
 
 import (
+	"bytes"
 	"context"
+	"strconv"
+	"sync"
 
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
 	types "github.com/Myriad-Dreamin/core-oj/types"
@@ -15,21 +18,55 @@ type Daemon struct {
 	// TaskInfoChan    chan *TaskInfo
 }
 
-func NewDaemon(cli *client.Client) (dae *Daemon, err error) {
+type DaemonConfig struct {
+	Number            int
+	CompilerName      string
+	Host              string
+	PortDst           string
+	StartPort         string
+	CodesPath         string
+	ComplierToolsPath string
+}
+
+func NewDaemon(cli *client.Client, config *DaemonConfig) (dae *Daemon, err error) {
 	dae = new(Daemon)
-	dae.compilerPool = make(chan *Compiler, 10)
+	dae.compilerPool = make(chan *Compiler, config.Number)
 	dae.cli = cli
 
-	config := client.NewContainerConfig()
-	cconfig := &types.CompilerConfig{GrpcAddress: "127.0.0.1:23367"}
-	config.PortMap.Insert("127.0.0.1", "23367", "23366")
-	config.VolumeMap.InsertBind("/home/kamiyoru/data/test", "/codes")
-	config.VolumeMap.InsertBind("/home/kamiyoru/data/compiler_tools", "/compiler_tools")
-	cp, err := BuildAndStartCompiler("compiler2", dae.cli, cconfig, config)
-	if err != nil {
-		return nil, err
+	cfg := client.NewContainerConfig()
+
+	// cfg.VolumeMap.InsertBind("/home/kamiyoru/data/test", "/codes")
+	// cfg.VolumeMap.InsertBind("/home/kamiyoru/data/compiler_tools", "/compiler_tools")
+	cfg.VolumeMap.InsertBind(config.CodesPath, "/codes")
+	cfg.VolumeMap.InsertBind(config.ComplierToolsPath, "/compiler_tools")
+
+	var wg sync.WaitGroup
+	var errs Errors
+	for idx := 0; idx < config.Number; idx++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			cconfig := &types.CompilerConfig{GrpcAddress: config.Host + ":" + strconv.Itoa(23367+idx)}
+			ccfg := client.NewContainerConfig()
+			ccfg.PortMap.Insert(config.Host, strconv.Itoa(23367+idx), config.StartPort)
+			ccfg.VolumeMap = cfg.VolumeMap
+			cp, err := BuildAndStartCompiler(config.CompilerName+strconv.Itoa(idx), dae.cli, cconfig, ccfg)
+			if err != nil {
+				errs = append(errs, err)
+				return
+			}
+
+			dae.compilerPool <- cp
+		}(idx)
 	}
-	dae.compilerPool <- cp
+	wg.Wait()
+
+	if len(errs) != 0 {
+		dae = nil
+		err = errs
+		return
+	}
+
 	return
 }
 
@@ -97,12 +134,30 @@ func NewDaemon(cli *client.Client) (dae *Daemon, err error) {
 // 	}
 // }
 
-func (dae *Daemon) Close() {
+type Errors []error
+
+func (errs Errors) Error() string {
+	var b = new(bytes.Buffer)
+	for _, err := range errs {
+		b.WriteString(err.Error())
+	}
+	return b.String()
+}
+
+func (dae *Daemon) Close() error {
 	worker, ok := <-dae.compilerPool
+	var errs Errors
 	for ok {
-		worker.Close()
+		err := worker.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
 		worker, ok = <-dae.compilerPool
 	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
 }
 
 func (dae *Daemon) Run(ctx context.Context, withWorker func(*Compiler)) {

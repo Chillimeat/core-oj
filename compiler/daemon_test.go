@@ -31,7 +31,15 @@ func TestDaemon(t *testing.T) {
 		return
 	}
 
-	dae, err := NewDaemon(cli)
+	dae, err := NewDaemon(cli, &DaemonConfig{
+		Number:            8,
+		CompilerName:      "compiler",
+		Host:              "127.0.0.1",
+		PortDst:           "23366",
+		StartPort:         "23366",
+		CodesPath:         "/home/kamiyoru/data/test",
+		ComplierToolsPath: "/home/kamiyoru/data/compiler_tools",
+	})
 	if err != nil {
 		t.Error(err)
 		return

@@ -69,12 +69,12 @@ func (objx *Objector) Inserts(objs []Object) (int64, error) {
 
 // Querys with conditions
 func (objx *Objector) Querys(objs []Object, conds ...interface{}) error {
-	return x.Find(objs, conds...)
+	return x.Find(&objs, conds...)
 }
 
 // ColsQuerys with conditions with specifying columns
 func (objx *Objector) ColsQuerys(objs []Object, cols ...string) error {
-	return x.Cols(cols...).Find(objs)
+	return x.Cols(cols...).Find(&objs)
 }
 
 // Where provIDes custom query condition.
@@ -117,6 +117,6 @@ func (objx *ObjectorSession) In(query string, args ...interface{}) *ObjectorSess
 // map[int64]*Struct
 func (objx *ObjectorSession) Find(conds ...interface{}) ([]Object, error) {
 	objs := make([]Object, 0)
-	err := ((*xorm.Session)(objx)).Find(objs, conds...)
+	err := ((*xorm.Session)(objx)).Find(&objs, conds...)
 	return objs, err
 }

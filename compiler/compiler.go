@@ -3,6 +3,7 @@ package compiler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
 
@@ -17,6 +18,7 @@ import (
 )
 
 type Compiler struct {
+	cli       *client.Client
 	container *dockertypes.Container
 	conn      *grpc.ClientConn
 	rpcx.CompilerClient
@@ -28,12 +30,12 @@ func StartCompiler(containerInfo *dockertypes.Container, cli *client.Client, cco
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(err)
 	}
 
 	cp = new(Compiler)
 
 	fmt.Printf("Container %s is started\n", containerInfo.ID)
+	cp.cli = cli
 	cp.container = containerInfo
 	cp.conn, err = grpc.Dial(cconfig.GrpcAddress, grpc.WithInsecure())
 	if err != nil {
@@ -49,7 +51,6 @@ func BuildAndStartCompiler(name string, cli *client.Client, cconfig *types.Compi
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(containerInfo)
 
 	if containerInfo != nil {
 		return StartCompiler(containerInfo, cli, cconfig, config)
@@ -79,8 +80,10 @@ func BuildAndStartCompiler(name string, cli *client.Client, cconfig *types.Compi
 	return StartCompiler(containerInfo, cli, cconfig, config)
 }
 
-func (cp *Compiler) Close() {
+func (cp *Compiler) Close() error {
 	cp.conn.Close()
+	var timeout = time.Second * 20
+	return cp.cli.ContainerStop(context.Background(), cp.container.ID, &timeout)
 }
 
 // func StartCompiler() {

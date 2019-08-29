@@ -62,8 +62,8 @@ type ProcStater struct {
 
 var procStateSlot = []byte("procstate")
 
-func NewProcStater(db KVDB) (*ProcStater, error) {
-	db, err := db.Table(procStateSlot)
+func NewProcStater() (*ProcStater, error) {
+	db, err := engine.Table(procStateSlot)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +80,10 @@ func (objx *ProcStater) Query(id int) ([]ProcState, error) {
 }
 
 func (objx *ProcStater) Insert(id int, obj []ProcState) error {
+	return objx.db.IDThen(id).Push(obj)
+}
+
+func (objx *ProcStater) InsertP(id int, obj []*ProcState) error {
 	return objx.db.IDThen(id).Push(obj)
 }
 

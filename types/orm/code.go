@@ -19,7 +19,7 @@ var CodeTypeMap = map[string]int{
 
 // Code records the code in online judge
 type Code struct {
-	ID        int    `xorm:"not null pk autoinobjx 'id'"`
+	ID        int    `xorm:"not null pk autoincr 'id'"`
 	CodeType  int    `xorm:"'code_type'"`
 	Hash      []byte `xorm:"'hash'"`
 	OwnerUID  int    `xorm:"'owner_uid'"`
@@ -70,6 +70,11 @@ func (obj *Code) Delete() (int64, error) {
 // Update to Engine
 func (obj *Code) Update() (int64, error) {
 	return x.ID(obj.ID).Update(obj)
+}
+
+// UpdateAll to Engine
+func (obj *Code) UpdateAll() (int64, error) {
+	return x.ID(obj.ID).AllCols().Update(obj)
 }
 
 // Query from Engine
@@ -285,12 +290,12 @@ func (objx *Coder) Inserts(objs []Code) (int64, error) {
 
 // Querys with conditions
 func (objx *Coder) Querys(objs []Code, conds ...interface{}) error {
-	return x.Find(objs, conds...)
+	return x.Find(&objs, conds...)
 }
 
 // ColsQuerys with conditions with specifying columns
 func (objx *Coder) ColsQuerys(objs []Code, cols ...string) error {
-	return x.Cols(cols...).Find(objs)
+	return x.Cols(cols...).Find(&objs)
 }
 
 // Where provIDes custom query condition.
@@ -303,7 +308,7 @@ func (objx *Coder) Where(query interface{}, args ...interface{}) *CoderSession {
 // map[int64]*Struct
 func (objx *Coder) Find(conds ...interface{}) ([]Code, error) {
 	objs := make([]Code, 0)
-	err := x.Find(objs, conds...)
+	err := x.Find(&objs, conds...)
 	return objs, err
 }
 
@@ -342,7 +347,7 @@ func (objx *CoderSession) In(query string, args ...interface{}) *CoderSession {
 // map[int64]*Struct
 func (objx *CoderSession) Find(conds ...interface{}) ([]Code, error) {
 	objs := make([]Code, 0)
-	err := ((*xorm.Session)(objx)).Find(objs, conds...)
+	err := ((*xorm.Session)(objx)).Find(&objs, conds...)
 	return objs, err
 }
 
@@ -371,7 +376,7 @@ func (objx *Coder) StartToExecuteTask(code *Code) error {
 func (objx *Coder) SettleTask(id int) (bool, error) {
 	// objx.mutex.Lock()
 	if code, ok := objx.aliveCodes[id]; ok {
-		affected, err := code.Update()
+		affected, err := code.UpdateAll()
 		if err != nil {
 			return false, err
 		}

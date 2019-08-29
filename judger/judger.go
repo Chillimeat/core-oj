@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -18,8 +17,8 @@ import (
 	config "github.com/Myriad-Dreamin/core-oj/config"
 	problemconfig "github.com/Myriad-Dreamin/core-oj/problem-config"
 	types "github.com/Myriad-Dreamin/core-oj/types"
+	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -27,6 +26,7 @@ import (
 )
 
 type Judger struct {
+	cli       *client.Client
 	container *dockertypes.Container
 	conn      *SocketY
 }
@@ -46,6 +46,7 @@ type SocketY struct {
 }
 
 func NewSocketY(addr *net.UnixAddr) (sy *SocketY, err error) {
+	time.Sleep(time.Second * 2)
 	sy = new(SocketY)
 	sy.addr = addr
 	sy.buffer = make([]byte, 3333)
@@ -74,7 +75,6 @@ func (sy *SocketY) Receive() ([]byte, error) {
 
 func (sy *SocketY) Send(b []byte) (err error) {
 	if time.Now().Sub(sy.lastDial) > 400*time.Millisecond {
-		fmt.Println("here")
 		sy.UnixConn, err = net.DialUnix("unix", nil, sy.addr)
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func maxFloat64(a, b float64) float64 {
 	return b
 }
 
-func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*types.ProcState, error) {
+func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*kvorm.ProcState, error) {
 	var path = config.Config().ProblemPath + strconv.Itoa(problem.ID)
 	var inpath = "/problems/" + strconv.Itoa(problem.ID)
 	var outpath = inpath
@@ -130,7 +130,7 @@ func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*types.ProcSt
 	}
 
 	var testCase = new(types.TestCase)
-	testCase.TestPath = "/codes" + hex.EncodeToString(code.Hash) + "/main"
+	testCase.TestPath = "/codes/" + hex.EncodeToString(code.Hash) + "/main"
 
 	testCase.OptionStream = 0
 	if cfg.SpecialJudgeConfig.SpecialJudge {
@@ -146,13 +146,13 @@ func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*types.ProcSt
 		if len(cfg.JudgeConfig.Tasks) != 1 {
 			return nil, errors.New("problem cfg error?(judge-config.tasks")
 		}
-		var retstat = make([]*types.ProcState, 0, len(cfg.JudgeConfig.Tasks))
+		var retstat = make([]*kvorm.ProcState, 0, len(cfg.JudgeConfig.Tasks))
 		var task = cfg.JudgeConfig.Tasks[0]
 		var intaskpath = inpath + task.InputPath + "in"
 		var outtaskPath = outpath + task.OutputPath + "out"
 		testCase.TimeLimit = task.TimeLimit
 		testCase.MemoryLimit = task.MemoryLimit
-		var totstat = new(types.ProcState)
+		var totstat = new(kvorm.ProcState)
 		for testCase.CaseNumber = 1; testCase.CaseNumber <= task.CaseCount; testCase.CaseNumber++ {
 			testCase.InputPath = intaskpath + strconv.Itoa(testCase.CaseNumber) + ".txt"
 			testCase.StdOutputPath = outtaskPath + strconv.Itoa(testCase.CaseNumber) + ".txt"
@@ -161,7 +161,6 @@ func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*types.ProcSt
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println(string(b))
 
 			b, err = json.Marshal(testCase)
 			if err != nil {
@@ -175,9 +174,8 @@ func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*types.ProcSt
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println(string(b), err)
 
-			var stat types.ProcState
+			var stat kvorm.ProcState
 			err = json.Unmarshal(b, &stat)
 			if err != nil {
 				return nil, err
@@ -207,11 +205,10 @@ func StartJudger(containerInfo *dockertypes.Container, cli *client.Client, cconf
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(err)
 	}
 
 	cp = new(Judger)
-	fmt.Printf("Container %s is started\n", containerInfo.ID)
+	cp.cli = cli
 	cp.container = containerInfo
 
 	uaddr, err := net.ResolveUnixAddr("unix", cconfig.UnixAddress)
@@ -232,7 +229,6 @@ func BuildAndStartJudger(name string, cli *client.Client, cconfig *types.JudgerC
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(containerInfo)
 
 	if containerInfo != nil {
 		return StartJudger(containerInfo, cli, cconfig, config)
@@ -263,8 +259,10 @@ func BuildAndStartJudger(name string, cli *client.Client, cconfig *types.JudgerC
 	return StartJudger(containerInfo, cli, cconfig, config)
 }
 
-func (cp *Judger) Close() {
+func (cp *Judger) Close() error {
 	cp.conn.Close()
+	var timeout = time.Second * 20
+	return cp.cli.ContainerStop(context.Background(), cp.container.ID, &timeout)
 }
 
 // func StartJudger() {

@@ -39,9 +39,12 @@ func TestProcStatesStorage(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	RegisterEngine(db)
+
 	defer db.Close()
 	var proc *ProcStater
-	proc, err = NewProcStater(db)
+	proc, err = NewProcStater()
 	err = proc.Insert(7, g)
 	if err != nil {
 		t.Error(err)

@@ -29,7 +29,14 @@ func TestDaemon(t *testing.T) {
 		return
 	}
 
-	dae, err := NewDaemon(cli)
+	dae, err := NewDaemon(cli, &DaemonConfig{
+		Number:           20,
+		JudgerName:       "judger",
+		ProblemsPath:     "/home/kamiyoru/data/problems",
+		CodesPath:        "/home/kamiyoru/data/test",
+		CheckerToolsPath: "/home/kamiyoru/data/checker_tools",
+		JudgerToolsPath:  "/home/kamiyoru/data/judger_tools",
+	})
 	if err != nil {
 		t.Error(err)
 		return

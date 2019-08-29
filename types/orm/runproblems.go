@@ -80,12 +80,12 @@ func (objx *RuntimeProblemer) Inserts(objs []RuntimeProblem) (int64, error) {
 
 // Querys with conditions
 func (objx *RuntimeProblemer) Querys(objs []RuntimeProblem, conds ...interface{}) error {
-	return x.Find(objs, conds...)
+	return x.Find(&objs, conds...)
 }
 
 // ColsQuerys with conditions with specifying columns
 func (objx *RuntimeProblemer) ColsQuerys(objs []RuntimeProblem, cols ...string) error {
-	return x.Cols(cols...).Find(objs)
+	return x.Cols(cols...).Find(&objs)
 }
 
 // Where provIDes custom query condition.
@@ -128,6 +128,6 @@ func (objx *RuntimeProblemSession) In(query string, args ...interface{}) *Runtim
 // map[int64]*Struct
 func (objx *RuntimeProblemSession) Find(conds ...interface{}) ([]RuntimeProblem, error) {
 	objs := make([]RuntimeProblem, 0)
-	err := ((*xorm.Session)(objx)).Find(objs, conds...)
+	err := ((*xorm.Session)(objx)).Find(&objs, conds...)
 	return objs, err
 }

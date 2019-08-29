@@ -7,9 +7,22 @@ option go_package = "github.com/Myriad-Dreamin/core-oj/compiler/grpc";
 
 enum CompileResponseCode {
     Ok = 0;
-    FileNotFound = 1;
-    CompileTimeLimitExceed = 2;
-    CompileError = 3;
+	WaitingForJudge = 1;
+	Running = 2;
+	Compiling = 3;
+    CompileError = 4;
+	CompileTimeout = 5;
+	WrongAnswer = 6;
+	TimeLimitExceed = 7; 
+	MemoryLimitExceed = 8;
+	OutputLimitExceed = 9;
+	SystemError = 10;
+	UnknownError = 11;
+	PresentationError = 12;
+	RuntimeError = 13;
+	JudgeError = 14;
+	ExhaustedMatch = 15;
+    FileNotFound = 16;
 }
 
 

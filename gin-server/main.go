@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	config "github.com/Myriad-Dreamin/core-oj/config"
 	"github.com/Myriad-Dreamin/core-oj/log"
+	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -14,6 +16,7 @@ import (
 
 type Server struct {
 	engine *xorm.Engine
+	kvdb   *kvorm.GobDB
 	logger log.TendermintLogger
 }
 
@@ -28,8 +31,13 @@ func NewServer() (srv *Server, err error) {
 	return
 }
 
-func (srv *Server) prepareDatabase(driver, connection string) error {
+func (srv *Server) prepareDatabase(kvpath, driver, connection string) error {
 	var err error
+	srv.kvdb, err = kvorm.NewGobLevelDB(kvpath)
+	if err != nil {
+		return err
+	}
+
 	srv.engine, err = xorm.NewEngine(driver, connection)
 	if err != nil {
 		srv.logger.Error("prepare failed", "error", err)
@@ -37,9 +45,14 @@ func (srv *Server) prepareDatabase(driver, connection string) error {
 	}
 
 	morm.RegisterEngine(srv.engine)
+	kvorm.RegisterEngine(srv.kvdb)
 
 	srv.engine.ShowSQL(true)
 	return nil
+}
+
+func (srv *Server) Close() error {
+	return srv.kvdb.Close()
 }
 
 func (srv *Server) Serve(port string) error {
@@ -52,11 +65,21 @@ func (srv *Server) Serve(port string) error {
 	if err != nil {
 		return err
 	}
-
-	judgeService, err := NewJudgeService(coder, problemer, srv.logger)
+	procStater, err := kvorm.NewProcStater()
 	if err != nil {
 		return err
 	}
+
+	judgeService, err := NewJudgeService(coder, problemer, procStater, srv.logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		fmt.Println("close...")
+		if err := judgeService.Close(); err != nil {
+			srv.logger.Debug("close error", err)
+		}
+	}()
 
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
@@ -67,9 +90,10 @@ func (srv *Server) Serve(port string) error {
 
 	codeRouter := r.Group("/code")
 	{
-		var codeService = NewCodeService(coder, srv.logger)
+		var codeService = NewCodeService(coder, procStater, srv.logger)
 		codeRouter.GET("/:id", codeService.Get)
 		codeRouter.GET("/:id/content", codeService.GetContent)
+		codeRouter.GET("/:id/result", codeService.GetResult)
 		codeRouter.POST("/postform", codeService.PostForm)
 		// codeRouter.PUT("/:id/updateform-runtimeid", codeService.UpdateRuntimeID)
 		codeRouter.DELETE("/:id", codeService.Delete)
@@ -113,11 +137,17 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	err = srv.prepareDatabase(config.Config().DriverName, config.Config().MasterDataSourceName)
+	err = srv.prepareDatabase(config.Config().KVPath, config.Config().DriverName, config.Config().MasterDataSourceName)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	defer func() {
+		err := srv.Close()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}()
 
 	if err = srv.Serve(":23336"); err != nil {
 		fmt.Println(err)

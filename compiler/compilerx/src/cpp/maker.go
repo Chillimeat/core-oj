@@ -25,7 +25,7 @@ func (cp *Compiler) Compile(source, destination string) error {
 
 	if err = gccer.Run(); err != nil {
 		var ce = new(types.CompileError)
-		ce.ProcErr = err
+		ce.ProcErr = err.Error()
 		ce.Info, err = ioutil.ReadAll(stderr)
 		if err != nil {
 			ce.Info = []byte(err.Error())

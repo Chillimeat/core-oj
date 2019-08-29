@@ -1,7 +1,11 @@
 package judger
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"strconv"
+	"sync"
 
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
 	types "github.com/Myriad-Dreamin/core-oj/types"
@@ -14,25 +18,59 @@ type Daemon struct {
 	// TaskJudgerhan chan *TaskJudger	// TaskInfoChan    chan *TaskInfo
 }
 
-func NewDaemon(cli *client.Client) (dae *Daemon, err error) {
+type DaemonConfig struct {
+	Number           int
+	JudgerName       string
+	ProblemsPath     string
+	CodesPath        string
+	CheckerToolsPath string
+	JudgerToolsPath  string
+	Env              []string
+}
+
+func NewDaemon(cli *client.Client, config *DaemonConfig) (dae *Daemon, err error) {
 	dae = new(Daemon)
-	dae.judgerPool = make(chan *Judger, 10)
+	dae.judgerPool = make(chan *Judger, config.Number)
 	dae.cli = cli
 
-	config := client.NewContainerConfig()
-	cconfig := &types.JudgerConfig{UnixAddress: "/home/kamiyoru/data/judger_tools/socks/judger0.sock"}
-	config.VolumeMap.InsertBind("/home/kamiyoru/data/test", "/codes")
-	config.VolumeMap.InsertBind("/home/kamiyoru/data/judger_tools", "/judger_tools")
-	config.VolumeMap.InsertBind("/home/kamiyoru/data/problems", "/problems")
-	config.VolumeMap.InsertBind("/home/kamiyoru/data/checker_tools", "/checker_tools")
-	config.Env = append(config.Env, "NAME=judger0")
-	js, err := BuildAndStartJudger("judger0", cli, cconfig, config)
-	if err != nil {
-		dae = nil
-		return
+	cfg := client.NewContainerConfig()
+	// cfg.VolumeMap.InsertBind("/home/kamiyoru/data/test", "/codes")
+	// cfg.VolumeMap.InsertBind("/home/kamiyoru/data/judger_tools", "/judger_tools")
+	// cfg.VolumeMap.InsertBind("/home/kamiyoru/data/problems", "/problems")
+	// cfg.VolumeMap.InsertBind("/home/kamiyoru/data/checker_tools", "/checker_tools")
+	cfg.VolumeMap.InsertBind(config.CodesPath, "/codes")
+	cfg.VolumeMap.InsertBind(config.JudgerToolsPath, "/judger_tools")
+	cfg.VolumeMap.InsertBind(config.ProblemsPath, "/problems")
+	cfg.VolumeMap.InsertBind(config.CheckerToolsPath, "/checker_tools")
+	cfg.Env = config.Env
+	var wg = new(sync.WaitGroup)
+	var errs Errors
+	for idx := 0; idx < config.Number; idx++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			cconfig := &types.JudgerConfig{UnixAddress: "/home/kamiyoru/data/judger_tools/socks/" + config.JudgerName + strconv.Itoa(idx) + ".sock"}
+			ccfg := client.NewContainerConfig()
+			ccfg.VolumeMap = cfg.VolumeMap
+			ccfg.Env = append(cfg.Env, "NAME="+config.JudgerName+strconv.Itoa(idx))
+			js, err := BuildAndStartJudger(config.JudgerName+strconv.Itoa(idx), cli, cconfig, ccfg)
+			if err != nil {
+				errs = append(errs, err)
+				return
+			}
+			dae.judgerPool <- js
+		}(idx)
 	}
 
-	dae.judgerPool <- js
+	wg.Wait()
+
+	fmt.Println("here")
+
+	if len(errs) != 0 {
+		dae = nil
+		err = errs
+		return
+	}
 	return
 }
 
@@ -100,12 +138,30 @@ func NewDaemon(cli *client.Client) (dae *Daemon, err error) {
 // 	}
 // }
 
-func (dae *Daemon) Close() {
+type Errors []error
+
+func (errs Errors) Error() string {
+	var b = new(bytes.Buffer)
+	for _, err := range errs {
+		b.WriteString(err.Error())
+	}
+	return b.String()
+}
+
+func (dae *Daemon) Close() error {
 	worker, ok := <-dae.judgerPool
+	var errs Errors
 	for ok {
-		worker.Close()
+		err := worker.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
 		worker, ok = <-dae.judgerPool
 	}
+	if len(errs) == 0 {
+		return nil
+	}
+	return errs
 }
 
 func (dae *Daemon) Run(ctx context.Context, withWorker func(*Judger)) {

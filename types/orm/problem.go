@@ -43,6 +43,11 @@ func (obj *Problem) Update() (int64, error) {
 	return x.ID(obj.ID).Update(obj)
 }
 
+// UpdateAll to Engine
+func (obj *Problem) UpdateAll() (int64, error) {
+	return x.ID(obj.ID).AllCols().Update(obj)
+}
+
 // Query from Engine
 func (obj *Problem) Query() (bool, error) {
 	return x.Get(obj)
@@ -88,12 +93,12 @@ func (objx *Problemer) Inserts(objs []Problem) (int64, error) {
 
 // Querys with conditions
 func (objx *Problemer) Querys(objs []Problem, conds ...interface{}) error {
-	return x.Find(objs, conds...)
+	return x.Find(&objs, conds...)
 }
 
 // ColsQuerys with conditions with specifying columns
 func (objx *Problemer) ColsQuerys(objs []Problem, cols ...string) error {
-	return x.Cols(cols...).Find(objs)
+	return x.Cols(cols...).Find(&objs)
 }
 
 // Where provIDes custom query condition.
@@ -136,6 +141,6 @@ func (objx *ProblemSession) In(query string, args ...interface{}) *ProblemSessio
 // map[int64]*Struct
 func (objx *ProblemSession) Find(conds ...interface{}) ([]Problem, error) {
 	objs := make([]Problem, 0)
-	err := ((*xorm.Session)(objx)).Find(objs, conds...)
+	err := ((*xorm.Session)(objx)).Find(&objs, conds...)
 	return objs, err
 }

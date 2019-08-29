@@ -1,32 +1,35 @@
 package main
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
 
+	config "github.com/Myriad-Dreamin/core-oj/config"
 	"github.com/Myriad-Dreamin/core-oj/log"
 	types "github.com/Myriad-Dreamin/core-oj/types"
+	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 	"github.com/gin-gonic/gin"
 )
 
 // CodeService defines handler functions of code router
 type CodeService struct {
-	Coder  *morm.Coder
-	logger log.TendermintLogger
+	Coder      *morm.Coder
+	ProcStater *kvorm.ProcStater
+	logger     log.TendermintLogger
+	codePath   string
 }
 
 // NewCodeService return a pointer of CodeService
-func NewCodeService(coder *morm.Coder, logger log.TendermintLogger) *CodeService {
+func NewCodeService(coder *morm.Coder, procStater *kvorm.ProcStater, logger log.TendermintLogger) *CodeService {
 	return &CodeService{
-		Coder:  coder,
-		logger: logger,
+		Coder:      coder,
+		ProcStater: procStater,
+		logger:     logger,
+		codePath:   config.Config().CodePath,
 	}
 }
 
@@ -127,12 +130,44 @@ func (cr *CodeService) GetContent(c *gin.Context) {
 		// 	"problemid": code.ProblemID,
 		// 	"status":    code.Status,
 		// })
-		c.File(codepath + hex.EncodeToString(code.Hash) + "/main.cpp")
+		c.File(cr.codePath + hex.EncodeToString(code.Hash) + "/main.cpp")
 	} else {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeNotFound,
 		})
 	}
+}
+
+// GetResult from kvdb
+func (cr *CodeService) GetResult(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.AbortWithError(404, err)
+		return
+	}
+	code, err := cr.Coder.Query(int(id))
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if code == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeNotFound,
+		})
+		return
+	}
+
+	result, err := cr.ProcStater.Query(code.ID)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeNotFound,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"code":   CodeOK,
+		"result": result,
+	})
 }
 
 // PostForm codes to database
@@ -202,11 +237,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 	}
 
 	codeHash := md5.New()
-
-	buf := bytes.NewBufferString(body)
-	var p = make([]byte, 0)
-	_, err = io.TeeReader(buf, codeHash).Read(p)
-	fmt.Println(p)
+	_, err = codeHash.Write([]byte(body))
 
 	if err != nil {
 		c.AbortWithError(500, err)
@@ -221,13 +252,19 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 	} else if cx != nil {
 		c.JSON(200, gin.H{
 			"code": CodeCodeUploaded,
+			"hash": code.Hash,
 		})
 		return
 	}
 
-	var path = codepath + hex.EncodeToString(code.Hash)
+	var path = cr.codePath + hex.EncodeToString(code.Hash)
 	if _, err = os.Stat(path); err != nil && !os.IsExist(err) {
 		err = os.Mkdir(path, 0777)
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
+		err = os.Chmod(path, 0777)
 		if err != nil {
 			c.AbortWithError(500, err)
 			return

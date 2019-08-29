@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	config "github.com/Myriad-Dreamin/core-oj/config"
 	"github.com/Myriad-Dreamin/core-oj/log"
 	problemconfig "github.com/Myriad-Dreamin/core-oj/problem-config"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
@@ -21,15 +22,17 @@ import (
 
 // ProblemService defines handler functions of problem router
 type ProblemService struct {
-	Problemer *morm.Problemer
-	logger    log.TendermintLogger
+	Problemer   *morm.Problemer
+	logger      log.TendermintLogger
+	problemPath string
 }
 
 // NewProblemService return a pointer of ProblemService
 func NewProblemService(problemer *morm.Problemer, logger log.TendermintLogger) *ProblemService {
 	return &ProblemService{
-		Problemer: problemer,
-		logger:    logger,
+		Problemer:   problemer,
+		logger:      logger,
+		problemPath: config.Config().ProblemPath,
 	}
 }
 
@@ -170,7 +173,7 @@ func (pr *ProblemService) Stat(c *gin.Context) {
 		return
 	}
 
-	path = problempath + c.Param("id") + path
+	path = pr.problemPath + c.Param("id") + path
 	var stat os.FileInfo
 	var err error
 	if stat, err = os.Stat(path); err != nil {
@@ -199,7 +202,7 @@ func (pr *ProblemService) Mkdir(c *gin.Context) {
 		return
 	}
 
-	path = problempath + c.Param("id") + path
+	path = pr.problemPath + c.Param("id") + path
 	if err := os.Mkdir(path, 0755); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeFSExecError,
@@ -225,7 +228,7 @@ func (pr *ProblemService) Ls(c *gin.Context) {
 		return
 	}
 
-	path = problempath + c.Param("id") + path
+	path = pr.problemPath + c.Param("id") + path
 	var files []os.FileInfo
 	var err error
 	if files, err = ioutil.ReadDir(path); err != nil {
@@ -260,11 +263,11 @@ func (pr *ProblemService) Read(c *gin.Context) {
 		})
 		return
 	}
-	c.File(problempath + c.Param("id") + path)
+	c.File(pr.problemPath + c.Param("id") + path)
 }
 
 func (pr *ProblemService) ReadConfig(c *gin.Context) {
-	path := problempath + c.Param("id") + "/problem-config"
+	path := pr.problemPath + c.Param("id") + "/problem-config"
 	configPath, err := problemconfig.Select(path+".json", path+".yml", path+".toml", path+".xml")
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -277,7 +280,7 @@ func (pr *ProblemService) ReadConfig(c *gin.Context) {
 }
 
 func (pr *ProblemService) ReadConfigV2(c *gin.Context) {
-	path := problempath + c.Param("id") + "/problem-config"
+	path := pr.problemPath + c.Param("id") + "/problem-config"
 	var config problemconfig.ProblemConfig
 	err := problemconfig.Load(&config, path)
 	if err != nil {
@@ -294,7 +297,7 @@ func (pr *ProblemService) ReadConfigV2(c *gin.Context) {
 }
 
 func (pr *ProblemService) PutConfig(c *gin.Context) {
-	path := problempath + c.Param("id") + "/problem-config"
+	path := pr.problemPath + c.Param("id") + "/problem-config"
 	var config = new(problemconfig.ProblemConfig)
 	err := problemconfig.Load(config, path)
 	if err != nil {
@@ -362,7 +365,7 @@ func (pr *ProblemService) Write(c *gin.Context) {
 		return
 	}
 
-	if err = c.SaveUploadedFile(file, problempath+c.Param("id")+path+file.Filename); err != nil {
+	if err = c.SaveUploadedFile(file, pr.problemPath+c.Param("id")+path+file.Filename); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeFSExecError,
 			"err":  err.Error(),
@@ -395,7 +398,7 @@ func (pr *ProblemService) Writes(c *gin.Context) {
 		return
 	}
 	files := form.File["upload"]
-	path = problempath + c.Param("id") + path
+	path = pr.problemPath + c.Param("id") + path
 	for _, file := range files {
 		if err = c.SaveUploadedFile(file, path+file.Filename); err != nil {
 			c.JSON(http.StatusOK, gin.H{
@@ -431,7 +434,7 @@ func (pr *ProblemService) Zip(c *gin.Context) {
 		})
 		return
 	}
-	path = problempath + c.Param("id") + path
+	path = pr.problemPath + c.Param("id") + path
 	zipName := path + file.Filename
 	if err = c.SaveUploadedFile(file, zipName); err != nil {
 		c.JSON(http.StatusOK, gin.H{
