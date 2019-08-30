@@ -107,6 +107,8 @@ func serve(ctx context.Context, conn *net.UnixConn) {
 			cancel()
 			b, err = json.Marshal(procInfo)
 			if err != nil {
+				fmt.Println(*procInfo)
+				fmt.Printf("%v %T\n", procInfo.CodeError, procInfo.CodeError)
 				panic(err)
 			}
 			send(b)

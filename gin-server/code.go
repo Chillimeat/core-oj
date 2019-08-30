@@ -226,7 +226,6 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeCodeTypeUnknown,
 		})
-		codeType = language.ReverseConfigs[code.CodeType].SourcePath
 		return
 	}
 
@@ -272,7 +271,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 			return
 		}
 	}
-	path += codeType
+	path += language.ReverseConfigs[code.CodeType].SourcePath
 	if _, err = os.Stat(path); err != nil && !os.IsExist(err) {
 		f, err := os.Create(path)
 		if err != nil {

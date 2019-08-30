@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"strconv"
+	"strings"
 )
 
 type CodeError interface {
@@ -34,17 +35,20 @@ func AcceptedBaseCodeError() CodeError {
 	return &BaseCodeError{Code: StatusAccepted}
 }
 
+var ba = []byte(`"`)
+var bb = []byte(`\"`)
+
 func marshalCodeError(c CodeError) []byte {
 	var buf = bytes.NewBuffer(make([]byte, 70))
 	buf.Reset()
 	buf.WriteByte('{')
 
 	buf.WriteString(`"er":"`)
-	buf.WriteString(c.Error())
+	buf.WriteString(strings.Replace(c.Error(), `"`, `\"`, -1))
 
 	if b := c.JudgeError(); b != nil {
 		buf.WriteString(`","je":"`)
-		buf.Write(b)
+		buf.Write(bytes.Replace(b, ba, bb, -1))
 	}
 	buf.WriteString(`","ec":`)
 	buf.WriteString(strconv.FormatInt(c.ErrorCode(), 10))

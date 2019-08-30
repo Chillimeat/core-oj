@@ -134,8 +134,8 @@ func init() {
 		},
 		{
 			InternalCodeTypeJava, "java",
-			CompilerTypeICompiler, ExecutorTypeIExecutor,
-			"/Main.java", "Main.Class", "javac", "java",
+			CompilerTypeICompiler, ExecutorTypeArgIExecutor,
+			"/Main.java", "Main", "javac", "java",
 			nil, []string{"-cp {w} {d}"},
 		},
 	} {

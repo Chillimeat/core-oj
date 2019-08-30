@@ -7,7 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
 	helpfunc "github.com/Myriad-Dreamin/core-oj/help-func"
@@ -110,19 +109,19 @@ func (js *JudgeService) ProcessAllCodes(ctx context.Context) {
 		}
 		code.Status = types.StatusCompiling
 		js.cr.StartToExecuteTask(code)
-		jsctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		jsctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 		ret, err := worker.Compile(jsctx, req)
 
 		// todo: then
 		cancel()
 		if err != nil {
-			if err, ok := err.(types.CodeError); ok {
+			if errr, ok := err.(types.CodeError); ok {
 				// Warning: unsafeConvert
-				atomic.StoreInt64((*int64)(unsafe.Pointer(&code.Status)), int64(err.ErrorCode()))
-				js.logger.Debug("catch codClosee error", "error", err)
+				atomic.StoreInt64(&code.Status, int64(errr.ErrorCode()))
+				js.logger.Debug("catch codClosee error", "error", errr)
 			} else {
 				// Warning: unsafeConvert
-				atomic.StoreInt64((*int64)(unsafe.Pointer(&code.Status)), int64(types.StatusUnknownError))
+				atomic.StoreInt64(&code.Status, int64(types.StatusUnknownError))
 				js.logger.Debug("catch unknown code error", "error", err)
 			}
 			settled, err := js.cr.SettleTask(code.ID)

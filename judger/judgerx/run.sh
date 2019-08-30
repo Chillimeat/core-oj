@@ -16,21 +16,21 @@ echo hello judger!
 # chgrp core-qwq $SOCK
 # chmod 770 $SOCK
 
-ban() {
-    setfacl -R -m u:1001:--- $1
-    return 0
-}
+# ban() {
+#     setfacl -R -m u:1001:--- $1
+#     return 0
+# }
 
-ban /judger_tools
-ban /checker_tools
-ban /codes
-ban /usr
-ban /root
-ban /home
+# ban /judger_tools
+# ban /checker_tools
+# ban /codes
+# ban /usr
+# ban /root
+# ban /home
 # $ban /codes
-ban /problems
-ban /sbin
-ban /etc
+# ban /problems
+# ban /sbin
+# ban /etc
 
 
 touch /presu.txt

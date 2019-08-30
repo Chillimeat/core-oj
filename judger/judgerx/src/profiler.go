@@ -41,6 +41,7 @@ func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, out
 	c.Context = sctx
 	c.Stdin = input
 	c.Stdout = output
+
 	c.SysProcAttr = &syscall.SysProcAttr{}
 	c.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(23333), Gid: uint32(23333)}
 	cmd, err := c.Execute(testCase.TestWorkDir)
