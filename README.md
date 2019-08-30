@@ -7,6 +7,10 @@ micro-service, and backend core of online judge
 
 + support special judge
 
++ fix hash -> (type, code)
+
++ fix procstat <- compiler error
+
 + (maybe) support interactive mode
 
 
