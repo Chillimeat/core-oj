@@ -14,6 +14,7 @@ import (
 
 	profiler "github.com/Myriad-Dreamin/core-oj/judger/judgerx/src"
 	types "github.com/Myriad-Dreamin/core-oj/types"
+	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 )
 
 var (
@@ -66,7 +67,7 @@ func serve(ctx context.Context, conn *net.UnixConn) {
 
 		err := json.Unmarshal(buffer[0:lenBuffer], testCase)
 		if err != nil {
-			b, err := json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err.Error()}, 0, 0})
+			b, err := json.Marshal(&kvorm.ProcState{0, types.SystemError{ProcErr: err.Error()}, 0, 0})
 			if err != nil {
 				panic(err)
 			}
@@ -79,7 +80,7 @@ func serve(ctx context.Context, conn *net.UnixConn) {
 
 		input, err := profiler.MakeInput(testCase)
 		if err != nil {
-			b, err = json.Marshal(&types.ProcState{0, types.SystemError{ProcErr: err.Error()}, 0, 0})
+			b, err = json.Marshal(&kvorm.ProcState{0, types.SystemError{ProcErr: err.Error()}, 0, 0})
 			if err != nil {
 				panic(err)
 			}

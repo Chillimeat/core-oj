@@ -10,7 +10,7 @@ import (
 )
 
 func TestServer(t *testing.T) {
-	uaddr, err := net.ResolveUnixAddr("unix", "./qwq.sock")
+	uaddr, err := net.ResolveUnixAddr("unix", "/var/run/judger-test.sock")
 	if err != nil {
 		t.Error(err)
 		return

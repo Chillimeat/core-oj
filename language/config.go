@@ -147,6 +147,7 @@ func init() {
 			SourcePath: config.SourcePath,
 			TargetPath: config.TargetPath,
 		}
+		ReverseExecutors[config.TypeID] = Executors[config.TypeString]
 		ReverseConfigs[config.TypeID] = Configs[config.TypeString]
 		ReverseCompilers[config.TypeID] = Compilers[config.TypeString]
 	}
