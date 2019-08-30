@@ -32,7 +32,7 @@ service Compiler {
 }
 
 message CompileRequest {
-    string compiler_type = 1;
+    int64 compiler_type = 1;
     string code_path = 2;
     string aim_path = 3;
 }

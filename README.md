@@ -3,7 +3,7 @@ micro-service, and backend core of online judge
 
 ## TODO List
 
-+ support c/java/python
++ support java
 
 + expose configuration
 

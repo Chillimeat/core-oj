@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	config "github.com/Myriad-Dreamin/core-oj/config"
+	language "github.com/Myriad-Dreamin/core-oj/language"
 	"github.com/Myriad-Dreamin/core-oj/log"
 	types "github.com/Myriad-Dreamin/core-oj/types"
 	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
@@ -130,7 +131,7 @@ func (cr *CodeService) GetContent(c *gin.Context) {
 		// 	"problemid": code.ProblemID,
 		// 	"status":    code.Status,
 		// })
-		c.File(cr.codePath + hex.EncodeToString(code.Hash) + "/main.cpp")
+		c.File(cr.codePath + hex.EncodeToString(code.Hash) + language.ReverseConfigs[code.CodeType].SourcePath)
 	} else {
 		c.JSON(http.StatusOK, gin.H{
 			"code": CodeNotFound,
@@ -175,22 +176,6 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 	code := new(morm.Code)
 	var ok bool
 
-	// rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
-	var codeType string
-	if codeType, ok = c.GetPostForm("type"); !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": CodeCodeTypeMissing,
-		})
-		return
-	}
-
-	if code.CodeType, ok = morm.CodeTypeMap[codeType]; !ok {
-		c.JSON(http.StatusOK, gin.H{
-			"code": CodeCodeTypeUnknown,
-		})
-		return
-	}
-
 	var problemID string
 	if problemID, ok = c.GetPostForm("problemid"); !ok {
 		c.JSON(http.StatusOK, gin.H{
@@ -227,6 +212,23 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 	}
 	code.OwnerUID = int(ownerUIDx)
 	// todo: find problemid
+
+	// rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
+	var codeType string
+	if codeType, ok = c.GetPostForm("type"); !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeTypeMissing,
+		})
+		return
+	}
+
+	if code.CodeType, ok = language.CodeTypeMap[codeType]; !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"code": CodeCodeTypeUnknown,
+		})
+		codeType = language.ReverseConfigs[code.CodeType].SourcePath
+		return
+	}
 
 	var body string
 	if body, ok = c.GetPostForm("body"); !ok {
@@ -270,7 +272,7 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 			return
 		}
 	}
-	path += "/main.cpp"
+	path += codeType
 	if _, err = os.Stat(path); err != nil && !os.IsExist(err) {
 		f, err := os.Create(path)
 		if err != nil {

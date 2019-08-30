@@ -9,18 +9,10 @@ import (
 	"github.com/go-xorm/xorm"
 )
 
-const (
-	CodeTypeCpp11 int = iota
-)
-
-var CodeTypeMap = map[string]int{
-	"c++11": CodeTypeCpp11,
-}
-
 // Code records the code in online judge
 type Code struct {
 	ID        int    `xorm:"not null pk autoincr 'id'"`
-	CodeType  int    `xorm:"'code_type'"`
+	CodeType  int64  `xorm:"'code_type'"`
 	Hash      []byte `xorm:"'hash'"`
 	OwnerUID  int    `xorm:"'owner_uid'"`
 	ProblemID int    `xorm:"'problem_id'"`

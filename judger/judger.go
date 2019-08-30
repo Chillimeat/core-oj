@@ -130,8 +130,8 @@ func (js *Judger) Judge(code *morm.Code, problem *morm.Problem) ([]*kvorm.ProcSt
 	}
 
 	var testCase = new(types.TestCase)
-	testCase.TestPath = "/codes/" + hex.EncodeToString(code.Hash) + "/main"
-
+	testCase.TestType = code.CodeType
+	testCase.TestWorkDir = "/codes/" + hex.EncodeToString(code.Hash)
 	testCase.OptionStream = 0
 	if cfg.SpecialJudgeConfig.SpecialJudge {
 		testCase.SpecialJudge = true

@@ -101,15 +101,10 @@ func (js *JudgeService) ProcessAllCodes(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case code = <-waitingCodes:
-				switch code.CodeType {
-				case morm.CodeTypeCpp11:
-					req = &rpcx.CompileRequest{
-						CompilerType: "c++11",
-						CodePath:     "/codes/" + hex.EncodeToString(code.Hash) + "/main.cpp",
-						AimPath:      "/codes/" + hex.EncodeToString(code.Hash) + "/main",
-					}
-				default:
-					continue
+				req = &rpcx.CompileRequest{
+					CompilerType: code.CodeType,
+					CodePath:     "/codes/" + hex.EncodeToString(code.Hash),
+					AimPath:      "/codes/" + hex.EncodeToString(code.Hash),
 				}
 			}
 		}

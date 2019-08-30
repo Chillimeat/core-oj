@@ -8,6 +8,7 @@ import (
 
 	rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
 	client "github.com/Myriad-Dreamin/core-oj/docker-client"
+	language "github.com/Myriad-Dreamin/core-oj/language"
 )
 
 type TaskCompile struct {
@@ -110,9 +111,9 @@ func TestDaemon(t *testing.T) {
 			return
 		},
 		Req: &rpcx.CompileRequest{
-			CompilerType: "c++11",
-			CodePath:     "/codes/test.cpp",
-			AimPath:      "/codes/test",
+			CompilerType: language.CodeTypeMap["c++11"],
+			CodePath:     "/codes/ba09f6c01a6505ff18e25dcd8fc19d09",
+			AimPath:      "/codes/ba09f6c01a6505ff18e25dcd8fc19d09",
 		},
 	}
 	<-orzz

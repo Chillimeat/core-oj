@@ -7,7 +7,9 @@ import (
 	"syscall"
 	"time"
 
+	language "github.com/Myriad-Dreamin/core-oj/language"
 	types "github.com/Myriad-Dreamin/core-oj/types"
+	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 )
 
 func itoa(val int) string { // do it here rather than with fmt to avoid dependency
@@ -33,15 +35,17 @@ func uitoa(val uint) string {
 const BSDMaxrss = 1024
 
 // Profile execute a command and profile it
-func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, output io.Writer) *types.ProcState {
+func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, output io.Writer) *kvorm.ProcState {
 	sctx, cancel := context.WithTimeout(ctx, testCase.TimeLimit)
-	cmd := exec.CommandContext(sctx, testCase.TestPath)
-	cmd.Stdout = output
-	cmd.Stdin = input
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(23333), Gid: uint32(23333)}
-	if err := cmd.Run(); err != nil {
-		cancel()
+	var c = language.ReverseExecutors[testCase.TestType].Context()
+	c.Context = sctx
+	c.Stdin = input
+	c.Stdout = output
+	c.SysProcAttr = &syscall.SysProcAttr{}
+	c.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(23333), Gid: uint32(23333)}
+	cmd, err := c.Execute(testCase.TestWorkDir)
+	cancel()
+	if err != nil {
 		if errr, ok := err.(*exec.ExitError); ok {
 
 			rusage := errr.SysUsage().(*syscall.Rusage)
@@ -49,7 +53,7 @@ func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, out
 			res := ""
 			switch {
 			case status.Exited():
-				return &types.ProcState{
+				return &kvorm.ProcState{
 					int64(status.ExitStatus()),
 					types.RuntimeError{ProcErr: "exit status " + itoa(status.ExitStatus())},
 					time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
@@ -65,26 +69,24 @@ func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, out
 				res = "continued"
 			}
 
-			return &types.ProcState{
+			return &kvorm.ProcState{
 				int64(cmd.ProcessState.ExitCode()),
 				types.TimeLimitExceed{ProcErr: res},
 				time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec), float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 			}
 		}
 
-		return &types.ProcState{
+		return &kvorm.ProcState{
 			int64(23333),
 			types.JudgeError{ProcErr: err.Error()},
 			0, 0,
 		}
 	}
-	cancel()
-
 	rusage := cmd.ProcessState.SysUsage().(*syscall.Rusage)
 	var timeUsed = time.Microsecond*time.Duration(rusage.Utime.Usec) + time.Second*time.Duration(rusage.Utime.Sec) + time.Microsecond*time.Duration(rusage.Stime.Usec) + time.Second*time.Duration(rusage.Stime.Sec)
 
 	if timeUsed > testCase.TimeLimit {
-		return &types.ProcState{
+		return &kvorm.ProcState{
 			int64(cmd.ProcessState.ExitCode()), types.TimeLimitExceed{ProcErr: "Time limit exceed"},
 			timeUsed,
 			float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
@@ -93,14 +95,14 @@ func Profile(ctx context.Context, testCase *types.TestCase, input io.Reader, out
 
 	var MemoryUsed = float64(rusage.Maxrss*BSDMaxrss) / 1024.0
 	if MemoryUsed > float64(testCase.MemoryLimit) {
-		return &types.ProcState{
+		return &kvorm.ProcState{
 			int64(cmd.ProcessState.ExitCode()), types.MemoryLimitExceed{ProcErr: "Memory limit exceed"},
 			timeUsed,
 			float64(rusage.Maxrss*BSDMaxrss) / 1024.0,
 		}
 	}
 
-	return &types.ProcState{
+	return &kvorm.ProcState{
 		int64(cmd.ProcessState.ExitCode()), nil,
 		timeUsed,
 		float64(rusage.Maxrss*BSDMaxrss) / 1024.0,

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
+	language "github.com/Myriad-Dreamin/core-oj/language"
 
 	"google.golang.org/grpc"
 )
@@ -43,6 +44,43 @@ func TestBuildCompiler(t *testing.T) {
 	r, err := c.Info(
 		ctx,
 		&rpcx.InfoRequest{},
+	)
+	if err != nil {
+		t.Fatalf("could not greet: %v", err)
+	}
+	fmt.Printf("Info: %v\n", r)
+}
+
+func TestCompile(t *testing.T) {
+	// var srv *Server
+	// var err error
+	// if srv, err = NewServer(); err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// go func() {
+	// 	if err := srv.ListenAndServe(mPort); err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// }()
+
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(mAddress, grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := rpcx.NewCompilerClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	r, err := c.Compile(
+		ctx,
+		&rpcx.CompileRequest{
+			CompilerType: language.CodeTypeMap["c++11"],
+			CodePath:     "./test",
+			AimPath:      "./test",
+		},
 	)
 	if err != nil {
 		t.Fatalf("could not greet: %v", err)

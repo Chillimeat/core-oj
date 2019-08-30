@@ -9,7 +9,7 @@ import (
 
 // CompileService serve compile
 type CompileService struct {
-	Compilers map[string]types.Compiler
+	ReverseCompilers map[int64]types.Compiler
 	context.Context
 	*rpcx.CompileRequest
 }
@@ -17,7 +17,7 @@ type CompileService struct {
 // Serve serve a request
 func (srv *CompileService) Serve() (*rpcx.CompileReply, error) {
 
-	if cp, ok := srv.Compilers[srv.CompilerType]; ok {
+	if cp, ok := srv.ReverseCompilers[srv.CompilerType]; ok {
 		err := cp.Compile(srv.CodePath, srv.AimPath)
 		if err != nil {
 			if v, ok := err.(types.CodeError); ok {

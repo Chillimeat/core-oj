@@ -12,7 +12,8 @@ type TestConfig struct {
 type TestCase struct {
 	CaseNumber int `json:"cn"`
 
-	TestPath string `json:"tp"`
+	TestType    int64  `json:"tt"`
+	TestWorkDir string `json:"tw"`
 
 	OptionStream int `json:"ops"`
 
