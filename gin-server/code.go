@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"crypto/md5"
@@ -11,21 +11,20 @@ import (
 	language "github.com/Myriad-Dreamin/core-oj/language"
 	"github.com/Myriad-Dreamin/core-oj/log"
 	types "github.com/Myriad-Dreamin/core-oj/types"
-	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 	"github.com/gin-gonic/gin"
 )
 
 // CodeService defines handler functions of code router
 type CodeService struct {
-	Coder      *morm.Coder
-	ProcStater *kvorm.ProcStater
+	Coder      MinimumCodeDatabaseProvider
+	ProcStater MinimumProcStateDatabaseProvider
 	logger     log.TendermintLogger
 	codePath   string
 }
 
 // NewCodeService return a pointer of CodeService
-func NewCodeService(coder *morm.Coder, procStater *kvorm.ProcStater, logger log.TendermintLogger) *CodeService {
+func NewCodeService(coder MinimumCodeDatabaseProvider, procStater MinimumProcStateDatabaseProvider, logger log.TendermintLogger) *CodeService {
 	return &CodeService{
 		Coder:      coder,
 		ProcStater: procStater,
@@ -295,7 +294,10 @@ func (cr *CodeService) PostForm(c *gin.Context) {
 		return
 	}
 	if affected != 0 {
-		cr.Coder.PushTask(code)
+		err = cr.Coder.PushTask(code)
+		if err != nil {
+			cr.logger.Debug("push task failed", err)
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"code":      CodeOK,
 			"id":        code.ID,

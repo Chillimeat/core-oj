@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	rpcx "github.com/Myriad-Dreamin/core-oj/compiler/grpc"
 	helpfunc "github.com/Myriad-Dreamin/core-oj/help-func"
 	"github.com/Myriad-Dreamin/core-oj/log"
-	kvorm "github.com/Myriad-Dreamin/core-oj/types/kvorm"
 	morm "github.com/Myriad-Dreamin/core-oj/types/orm"
 
 	compiler "github.com/Myriad-Dreamin/core-oj/compiler"
@@ -26,14 +25,14 @@ import (
 type JudgeService struct {
 	cdae   *compiler.Daemon
 	jdae   *judger.Daemon
-	cr     *morm.Coder
-	pr     *morm.Problemer
-	psr    *kvorm.ProcStater
+	cr     MinimumCodeDatabaseProvider
+	pr     MinimumProblemDatabaseProvider
+	psr    MinimumProcStateDatabaseProvider
 	logger log.TendermintLogger
 }
 
 // NewJudgeService return a pointer of JudgeService
-func NewJudgeService(coder *morm.Coder, problemer *morm.Problemer, procStater *kvorm.ProcStater, logger log.TendermintLogger) (*JudgeService, error) {
+func NewJudgeService(coder MinimumCodeDatabaseProvider, problemer MinimumProblemDatabaseProvider, procStater MinimumProcStateDatabaseProvider, logger log.TendermintLogger) (*JudgeService, error) {
 	cli, err := client.Connect("unix:///var/run/docker.sock", "v1.40")
 	if err != nil {
 		return nil, err
@@ -108,7 +107,11 @@ func (js *JudgeService) ProcessAllCodes(ctx context.Context) {
 			}
 		}
 		code.Status = types.StatusCompiling
-		js.cr.StartToExecuteTask(code)
+		err := js.cr.StartToExecuteTask(code)
+		if err != nil {
+			js.logger.Debug("catch start task error", "error", err)
+			return
+		}
 		jsctx, cancel := context.WithTimeout(ctx, 25*time.Second)
 		ret, err := worker.Compile(jsctx, req)
 
@@ -118,7 +121,7 @@ func (js *JudgeService) ProcessAllCodes(ctx context.Context) {
 			if errr, ok := err.(types.CodeError); ok {
 				// Warning: unsafeConvert
 				atomic.StoreInt64(&code.Status, int64(errr.ErrorCode()))
-				js.logger.Debug("catch codClosee error", "error", errr)
+				js.logger.Debug("catch codeClose error", "error", errr)
 			} else {
 				// Warning: unsafeConvert
 				atomic.StoreInt64(&code.Status, int64(types.StatusUnknownError))

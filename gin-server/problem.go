@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"archive/zip"
@@ -20,15 +20,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type MinimumProblemDatabaseProvider interface {
+	Query(int) (*morm.Problem, error)
+}
+
 // ProblemService defines handler functions of problem router
 type ProblemService struct {
-	Problemer   *morm.Problemer
+	Problemer   MinimumProblemDatabaseProvider
 	logger      log.TendermintLogger
 	problemPath string
 }
 
 // NewProblemService return a pointer of ProblemService
-func NewProblemService(problemer *morm.Problemer, logger log.TendermintLogger) *ProblemService {
+func NewProblemService(problemer MinimumProblemDatabaseProvider, logger log.TendermintLogger) *ProblemService {
 	return &ProblemService{
 		Problemer:   problemer,
 		logger:      logger,

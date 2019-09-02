@@ -96,12 +96,12 @@ func serve(ctx context.Context, conn *net.UnixConn) {
 		cancel()
 		input.Close()
 
-		// todo spj time limit
-		conn.SetDeadline(time.Now().Add(testCase.TimeLimit + eachCaseDelay))
-		sctx, cancel = context.WithDeadline(ctx, time.Now().Add(testCase.TimeLimit+eachCaseDelay))
 		if procInfo != nil {
 
 			if procInfo.CodeError == nil {
+				// todo spj time limit
+				conn.SetDeadline(time.Now().Add(testCase.TimeLimit + eachCaseDelay))
+				sctx, cancel = context.WithDeadline(ctx, time.Now().Add(testCase.TimeLimit+eachCaseDelay))
 				procInfo.CodeError = profiler.Check(sctx, testCase, output)
 			}
 			cancel()
